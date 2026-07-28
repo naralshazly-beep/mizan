@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
+import { ACTIVE_WORKSPACE_COOKIE, getUserWorkspaces, resolveActiveWorkspace } from "@/lib/workspace";
 import { TransactionsClient } from "./TransactionsClient";
 
 export default async function TransactionsPage() {
@@ -13,14 +15,14 @@ export default async function TransactionsPage() {
     redirect("/login");
   }
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id, name, base_currency")
-    .eq("owner_id", user.id)
-    .eq("type", "personal")
-    .single();
+  const workspaces = await getUserWorkspaces(supabase);
+  const cookieStore = await cookies();
+  const activeWorkspace = resolveActiveWorkspace(
+    workspaces,
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value,
+  );
 
-  if (!workspace) {
+  if (!activeWorkspace) {
     redirect("/");
   }
 
@@ -28,11 +30,11 @@ export default async function TransactionsPage() {
     supabase
       .from("exchange_rates")
       .select("currency, rate_to_base")
-      .eq("workspace_id", workspace.id),
+      .eq("workspace_id", activeWorkspace.id),
     supabase
       .from("transactions")
       .select("id, date, type, category, description, currency, amount, rate_to_base, amount_base")
-      .eq("workspace_id", workspace.id)
+      .eq("workspace_id", activeWorkspace.id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false }),
   ]);
@@ -41,10 +43,15 @@ export default async function TransactionsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <AppHeader workspaceName={workspace.name} active="transactions" />
+      <AppHeader
+        workspaces={workspaces}
+        currentWorkspaceId={activeWorkspace.id}
+        userId={user.id}
+        active="transactions"
+      />
       <TransactionsClient
-        workspaceId={workspace.id}
-        baseCurrency={workspace.base_currency}
+        workspaceId={activeWorkspace.id}
+        baseCurrency={activeWorkspace.base_currency}
         rates={rates}
         transactions={transactions ?? []}
       />

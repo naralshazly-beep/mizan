@@ -1,17 +1,25 @@
 import Link from "next/link";
 import { logout } from "@/app/login/actions";
+import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
+import type { WorkspaceSummary } from "@/lib/workspace";
 
 type AppHeaderProps = {
-  workspaceName: string;
+  workspaces: WorkspaceSummary[];
+  currentWorkspaceId: string;
+  userId: string;
   active: "dashboard" | "transactions";
 };
 
 const LINK_BASE = "text-body transition-colors duration-150 ease-out";
 
-export function AppHeader({ workspaceName, active }: AppHeaderProps) {
+export function AppHeader({ workspaces, currentWorkspaceId, userId, active }: AppHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-border bg-surface px-5 py-4">
-      <span className="truncate text-header font-semibold text-text">{workspaceName}</span>
+      <WorkspaceSwitcher
+        workspaces={workspaces}
+        currentWorkspaceId={currentWorkspaceId}
+        userId={userId}
+      />
       <nav className="flex items-center gap-4">
         <Link
           href="/"

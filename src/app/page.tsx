@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { DashboardClient } from "./DashboardClient";
+import { ACTIVE_WORKSPACE_COOKIE, getUserWorkspaces, resolveActiveWorkspace } from "@/lib/workspace";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -14,19 +16,19 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id, name, base_currency")
-    .eq("owner_id", user.id)
-    .eq("type", "personal")
-    .single();
+  const workspaces = await getUserWorkspaces(supabase);
+  const cookieStore = await cookies();
+  const activeWorkspace = resolveActiveWorkspace(
+    workspaces,
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value,
+  );
 
-  if (!workspace) {
+  if (!activeWorkspace) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center bg-bg px-5 py-16">
         <Card className="flex w-full max-w-sm flex-col gap-2">
           <span className="text-body text-negative">
-            No personal workspace found yet. Make sure the database migration has been run.
+            No workspace found yet. Make sure the database migration has been run.
           </span>
         </Card>
       </main>
@@ -36,12 +38,20 @@ export default async function Home() {
   const { data: transactions } = await supabase
     .from("transactions")
     .select("date, type, category, amount_base")
-    .eq("workspace_id", workspace.id);
+    .eq("workspace_id", activeWorkspace.id);
 
   return (
     <div className="flex flex-1 flex-col">
-      <AppHeader workspaceName={workspace.name} active="dashboard" />
-      <DashboardClient baseCurrency={workspace.base_currency} transactions={transactions ?? []} />
+      <AppHeader
+        workspaces={workspaces}
+        currentWorkspaceId={activeWorkspace.id}
+        userId={user.id}
+        active="dashboard"
+      />
+      <DashboardClient
+        baseCurrency={activeWorkspace.base_currency}
+        transactions={transactions ?? []}
+      />
     </div>
   );
 }
