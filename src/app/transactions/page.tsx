@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "@/components/AppHeader";
 import { TransactionsClient } from "./TransactionsClient";
 
 export default async function TransactionsPage() {
@@ -41,13 +41,7 @@ export default async function TransactionsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-surface px-5 py-4">
-        <Link href="/" className="text-caption text-text-muted hover:text-text">
-          ← {workspace.name}
-        </Link>
-        <h1 className="text-header font-semibold text-text">Transactions</h1>
-        <span className="w-10" />
-      </div>
+      <AppHeader workspaceName={workspace.name} active="transactions" />
       <TransactionsClient
         workspaceId={workspace.id}
         baseCurrency={workspace.base_currency}

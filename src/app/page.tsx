@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { logout } from "@/app/login/actions";
-import { APP_NAME } from "@/lib/constants";
+import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { DashboardClient } from "./DashboardClient";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -23,43 +21,27 @@ export default async function Home() {
     .eq("type", "personal")
     .single();
 
+  if (!workspace) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center bg-bg px-5 py-16">
+        <Card className="flex w-full max-w-sm flex-col gap-2">
+          <span className="text-body text-negative">
+            No personal workspace found yet. Make sure the database migration has been run.
+          </span>
+        </Card>
+      </main>
+    );
+  }
+
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("date, type, category, amount_base")
+    .eq("workspace_id", workspace.id);
+
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-8 bg-bg px-5 py-16">
-      <Card className="flex w-full max-w-sm flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-title font-bold text-text">{APP_NAME}</h1>
-          <p className="text-body text-text-muted">Signed in as {user.email}</p>
-        </div>
-
-        {workspace ? (
-          <>
-            <div className="flex flex-col gap-2 rounded-control border border-border bg-bg p-4">
-              <span className="text-caption text-text-muted">Your workspace</span>
-              <span className="text-header font-semibold text-text">{workspace.name}</span>
-              <span className="text-caption text-text-muted">
-                Base currency: {workspace.base_currency}
-              </span>
-            </div>
-            <Link href="/transactions">
-              <Button type="button" className="w-full">
-                View transactions
-              </Button>
-            </Link>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2 rounded-control border border-border bg-bg p-4">
-            <span className="text-body text-negative">
-              No personal workspace found yet. Make sure the database migration has been run.
-            </span>
-          </div>
-        )}
-
-        <form action={logout}>
-          <Button type="submit" variant="secondary" className="w-full">
-            Log out
-          </Button>
-        </form>
-      </Card>
-    </main>
+    <div className="flex flex-1 flex-col">
+      <AppHeader workspaceName={workspace.name} active="dashboard" />
+      <DashboardClient baseCurrency={workspace.base_currency} transactions={transactions ?? []} />
+    </div>
   );
 }
