@@ -9,6 +9,8 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Badge } from "@/components/ui/Badge";
 import { CurrencyText } from "@/components/ui/CurrencyText";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyStateHero } from "@/components/ui/EmptyStateHero";
+import { ScaleIllustration } from "@/components/ui/illustrations";
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 
@@ -60,6 +62,7 @@ export function DebtsClient({ workspaceId, baseCurrency, rates, debts }: DebtsCl
     [debts],
   );
   const net = totalOwedToMe - totalOwedByMe;
+  const hasAnyData = debts.length > 0;
 
   const filtered = useMemo(() => {
     return debts.filter((d) => {
@@ -115,66 +118,111 @@ export function DebtsClient({ workspaceId, baseCurrency, rates, debts }: DebtsCl
 
   return (
     <div className="flex flex-1 flex-col gap-6 bg-bg px-5 py-6">
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <StatCard
-          label="Total I Owe"
-          value={formatMoney(totalOwedByMe, baseCurrency)}
-          valueClassName="text-negative"
-        />
-        <StatCard
-          label="Total Owed to Me"
-          value={formatMoney(totalOwedToMe, baseCurrency)}
-          valueClassName="text-positive"
-        />
-        <StatCard
-          label="Net"
-          value={formatMoney(net, baseCurrency)}
-          valueClassName={net >= 0 ? "text-positive" : "text-negative"}
-          emphasized
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <select
-          value={directionFilter}
-          onChange={(event) => setDirectionFilter(event.target.value as typeof directionFilter)}
-          className="rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
+      {!hasAnyData ? (
+        <EmptyStateHero
+          icon={<ScaleIllustration />}
+          title="Keep track of who owes what"
+          description="Log money you owe others, or money others owe you, in any currency — Mizan keeps a running balance so nothing slips through the cracks."
+          actionLabel="Add your first debt"
+          onAction={() => setSheet({ mode: "add" })}
         >
-          <option value="all">All</option>
-          <option value="owed_by_me">I owe</option>
-          <option value="owed_to_me">Owed to me</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-          className="rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
-        >
-          <option value="all">All statuses</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="paid">Paid</option>
-        </select>
-      </div>
-
-      {unpaid.length === 0 && paid.length === 0 ? (
-        <EmptyState
-          title="No debts tracked yet."
-          action={<Button onClick={() => setSheet({ mode: "add" })}>Add your first debt</Button>}
-        />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <StatCard
+                label="Total I Owe"
+                value={formatMoney(120, baseCurrency)}
+                valueClassName="text-negative"
+              />
+              <StatCard
+                label="Total Owed to Me"
+                value={formatMoney(300, baseCurrency)}
+                valueClassName="text-positive"
+              />
+              <StatCard
+                label="Net"
+                value={formatMoney(180, baseCurrency)}
+                valueClassName="text-positive"
+                emphasized
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-card bg-surface p-4 text-left shadow-card">
+              <div className="flex min-w-0 flex-col gap-1">
+                <Badge>Owed to me</Badge>
+                <span className="truncate text-body text-text">Example person</span>
+              </div>
+              <div className="flex flex-col items-end gap-0.5">
+                <CurrencyText amount={300} currency={baseCurrency} type="income" />
+                <span className="text-caption text-text-muted">
+                  ≈ {formatMoney(300, baseCurrency)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </EmptyStateHero>
       ) : (
-        <div className="flex flex-col gap-6">
-          {unpaid.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="text-caption font-semibold text-text-muted">Unpaid</h3>
-              <div className="flex flex-col gap-2">{unpaid.map(renderRow)}</div>
+        <>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <StatCard
+              label="Total I Owe"
+              value={formatMoney(totalOwedByMe, baseCurrency)}
+              valueClassName="text-negative"
+            />
+            <StatCard
+              label="Total Owed to Me"
+              value={formatMoney(totalOwedToMe, baseCurrency)}
+              valueClassName="text-positive"
+            />
+            <StatCard
+              label="Net"
+              value={formatMoney(net, baseCurrency)}
+              valueClassName={net >= 0 ? "text-positive" : "text-negative"}
+              emphasized
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <select
+              value={directionFilter}
+              onChange={(event) => setDirectionFilter(event.target.value as typeof directionFilter)}
+              className="rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
+            >
+              <option value="all">All</option>
+              <option value="owed_by_me">I owe</option>
+              <option value="owed_to_me">Owed to me</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              className="rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
+            >
+              <option value="all">All statuses</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+
+          {unpaid.length === 0 && paid.length === 0 ? (
+            <EmptyState
+              title="No debts match these filters."
+              action={<Button onClick={() => setSheet({ mode: "add" })}>Add your first debt</Button>}
+            />
+          ) : (
+            <div className="flex flex-col gap-6">
+              {unpaid.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-caption font-semibold text-text-muted">Unpaid</h3>
+                  <div className="flex flex-col gap-2">{unpaid.map(renderRow)}</div>
+                </div>
+              )}
+              {paid.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-caption font-semibold text-text-muted">Paid</h3>
+                  <div className="flex flex-col gap-2">{paid.map(renderRow)}</div>
+                </div>
+              )}
             </div>
           )}
-          {paid.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h3 className="text-caption font-semibold text-text-muted">Paid</h3>
-              <div className="flex flex-col gap-2">{paid.map(renderRow)}</div>
-            </div>
-          )}
-        </div>
+        </>
       )}
 
       <button

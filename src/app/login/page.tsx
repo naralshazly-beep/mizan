@@ -5,6 +5,7 @@ import Link from "next/link";
 import { login, signup } from "./actions";
 import { INITIAL_STATE } from "./auth-state";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +18,14 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [loginState, loginAction, loginPending] = useActionState(login, INITIAL_STATE);
   const [signupState, signupAction, signupPending] = useActionState(signup, INITIAL_STATE);
+
+  async function handleGoogleSignIn() {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center bg-bg px-5 py-16">
@@ -81,6 +90,16 @@ export default function LoginPage() {
             </Button>
           </form>
         )}
+
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-caption text-text-muted">or</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <Button type="button" variant="secondary" onClick={handleGoogleSignIn} className="w-full">
+          Continue with Google
+        </Button>
       </Card>
     </main>
   );

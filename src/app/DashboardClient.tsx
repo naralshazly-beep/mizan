@@ -1,20 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Transaction } from "@/app/transactions/types";
+import { TransactionForm } from "@/app/transactions/TransactionForm";
 import { formatMoney } from "@/lib/currency";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
 import { CategoryBreakdown } from "@/components/ui/CategoryBreakdown";
 import { MonthlyTrendChart, type TrendPoint } from "@/components/ui/MonthlyTrendChart";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
+import { EmptyStateHero } from "@/components/ui/EmptyStateHero";
+import { ChartIllustration } from "@/components/ui/illustrations";
+import { Sheet } from "@/components/ui/Sheet";
 
 type DashboardTransaction = Pick<Transaction, "date" | "type" | "category" | "amount_base">;
 
 type DashboardClientProps = {
+  workspaceId: string;
   baseCurrency: string;
+  rates: Record<string, number>;
   transactions: DashboardTransaction[];
 };
 
@@ -36,8 +40,15 @@ function sumByType(rows: DashboardTransaction[], type: "income" | "expense") {
   return rows.filter((t) => t.type === type).reduce((sum, t) => sum + t.amount_base, 0);
 }
 
-export function DashboardClient({ baseCurrency, transactions }: DashboardClientProps) {
+export function DashboardClient({
+  workspaceId,
+  baseCurrency,
+  rates,
+  transactions,
+}: DashboardClientProps) {
+  const router = useRouter();
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [addOpen, setAddOpen] = useState(false);
 
   const monthTransactions = useMemo(
     () => transactions.filter((t) => monthKey(t.date) === month),
@@ -68,26 +79,53 @@ export function DashboardClient({ baseCurrency, transactions }: DashboardClientP
 
   const hasAnyData = transactions.length > 0;
 
+  function closeAdd() {
+    setAddOpen(false);
+  }
+
+  function afterAdd() {
+    closeAdd();
+    router.refresh();
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 bg-bg px-5 py-6">
-      <input
-        type="month"
-        value={month}
-        onChange={(event) => setMonth(event.target.value)}
-        className="w-fit rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
-      />
-
       {!hasAnyData ? (
-        <EmptyState
-          title="No transactions yet."
-          action={
-            <Link href="/transactions">
-              <Button>Add your first transaction</Button>
-            </Link>
-          }
-        />
+        <EmptyStateHero
+          icon={<ChartIllustration />}
+          title="Welcome to your workspace"
+          description="This is where you'll track everything — income, expenses, and how they net out. Add your first transaction and your Dashboard will start building the picture automatically."
+          actionLabel="Add your first transaction"
+          onAction={() => setAddOpen(true)}
+        >
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <StatCard
+              label="Total Income"
+              value={formatMoney(1250, baseCurrency)}
+              valueClassName="text-positive"
+            />
+            <StatCard
+              label="Total Expenses"
+              value={formatMoney(480, baseCurrency)}
+              valueClassName="text-negative"
+            />
+            <StatCard
+              label="Net Profit/Loss"
+              value={formatMoney(770, baseCurrency)}
+              valueClassName="text-positive"
+              emphasized
+            />
+          </div>
+        </EmptyStateHero>
       ) : (
         <>
+          <input
+            type="month"
+            value={month}
+            onChange={(event) => setMonth(event.target.value)}
+            className="w-fit rounded-control border border-border bg-surface px-3 py-2 text-body text-text outline-none focus:border-accent"
+          />
+
           <div className="flex flex-col gap-4 sm:flex-row">
             <StatCard
               label="Total Income"
@@ -118,6 +156,19 @@ export function DashboardClient({ baseCurrency, transactions }: DashboardClientP
           </Card>
         </>
       )}
+
+      <Sheet open={addOpen} onClose={closeAdd} title="New transaction">
+        {addOpen && (
+          <TransactionForm
+            workspaceId={workspaceId}
+            baseCurrency={baseCurrency}
+            rates={rates}
+            onSaved={afterAdd}
+            onDeleted={afterAdd}
+            onCancel={closeAdd}
+          />
+        )}
+      </Sheet>
     </div>
   );
 }

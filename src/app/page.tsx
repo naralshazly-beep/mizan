@@ -35,10 +35,18 @@ export default async function Home() {
     );
   }
 
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select("date, type, category, amount_base")
-    .eq("workspace_id", activeWorkspace.id);
+  const [{ data: transactions }, { data: rateRows }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("date, type, category, amount_base")
+      .eq("workspace_id", activeWorkspace.id),
+    supabase
+      .from("exchange_rates")
+      .select("currency, rate_to_base")
+      .eq("workspace_id", activeWorkspace.id),
+  ]);
+
+  const rates = Object.fromEntries((rateRows ?? []).map((r) => [r.currency, r.rate_to_base]));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -49,7 +57,9 @@ export default async function Home() {
         active="dashboard"
       />
       <DashboardClient
+        workspaceId={activeWorkspace.id}
         baseCurrency={activeWorkspace.base_currency}
+        rates={rates}
         transactions={transactions ?? []}
       />
     </div>

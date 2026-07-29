@@ -10,6 +10,8 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Badge } from "@/components/ui/Badge";
 import { CurrencyText } from "@/components/ui/CurrencyText";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyStateHero } from "@/components/ui/EmptyStateHero";
+import { TransactionFlowIllustration } from "@/components/ui/illustrations";
 import { Button } from "@/components/ui/Button";
 
 type TransactionsClientProps = {
@@ -65,6 +67,7 @@ export function TransactionsClient({
   }, [transactions, month, typeFilter, categoryFilter]);
 
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
+  const hasAnyData = transactions.length > 0;
 
   function closeSheet() {
     setSheet(null);
@@ -109,12 +112,35 @@ export function TransactionsClient({
 
       <div className="flex-1 px-5 py-4">
         {grouped.length === 0 ? (
-          <EmptyState
-            title="No transactions this month yet."
-            action={
-              <Button onClick={() => setSheet({ mode: "add" })}>Add your first transaction</Button>
-            }
-          />
+          !hasAnyData ? (
+            <EmptyStateHero
+              icon={<TransactionFlowIllustration />}
+              title="No transactions yet"
+              description="Every expense and sale you log here rolls up into your Dashboard automatically, converted into your workspace's base currency. Add your first one to get started."
+              actionLabel="Add your first transaction"
+              onAction={() => setSheet({ mode: "add" })}
+            >
+              <div className="flex items-center justify-between gap-3 rounded-card bg-surface p-4 text-left shadow-card">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Badge>Ads</Badge>
+                  <span className="truncate text-body text-text">Example expense</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                  <CurrencyText amount={45} currency={baseCurrency} type="expense" />
+                  <span className="text-caption text-text-muted">
+                    ≈ {formatMoney(45, baseCurrency)}
+                  </span>
+                </div>
+              </div>
+            </EmptyStateHero>
+          ) : (
+            <EmptyState
+              title="No transactions this month yet."
+              action={
+                <Button onClick={() => setSheet({ mode: "add" })}>Add your first transaction</Button>
+              }
+            />
+          )
         ) : (
           <div className="flex flex-col gap-6">
             {grouped.map(([date, rows]) => (
