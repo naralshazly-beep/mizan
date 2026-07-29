@@ -7,6 +7,7 @@ import { TransactionForm } from "@/app/transactions/TransactionForm";
 import { formatMoney } from "@/lib/currency";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { CategoryBreakdown } from "@/components/ui/CategoryBreakdown";
 import { MonthlyTrendChart, type TrendPoint } from "@/components/ui/MonthlyTrendChart";
 import { EmptyStateHero } from "@/components/ui/EmptyStateHero";
@@ -90,6 +91,7 @@ export function DashboardClient({
 
   return (
     <div className="flex flex-1 flex-col gap-6 bg-bg px-5 py-6">
+      <PageHeader title="Dashboard" />
       {!hasAnyData ? (
         <EmptyStateHero
           icon={<ChartIllustration />}

@@ -9,6 +9,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { formatMoney } from "@/lib/currency";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { FormError } from "@/components/ui/FormMessage";
 
@@ -61,8 +62,6 @@ export function TransactionForm({
       ? formatMoney(amountNumber * rate, baseCurrency)
       : null;
 
-  const canSave = amountNumber > 0 && Boolean(category) && !pending;
-
   return (
     <form action={formAction} className="flex flex-col gap-4 py-4">
       <input type="hidden" name="workspaceId" value={workspaceId} />
@@ -78,7 +77,7 @@ export function TransactionForm({
       <input type="hidden" name="type" value={type} />
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-caption font-medium text-text-muted">Amount</span>
+        <span className="text-card-label font-medium text-text-secondary">Amount</span>
         <div className="flex gap-2">
           <input
             name="amount"
@@ -86,28 +85,30 @@ export function TransactionForm({
             inputMode="decimal"
             step="0.01"
             min="0"
+            aria-label="Amount"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             placeholder="0.00"
-            className={`w-full rounded-control border border-border bg-surface px-4 py-3 text-big-number font-bold outline-none transition-colors duration-150 ease-out focus:border-accent ${
+            className={`w-full rounded-control border border-border bg-surface px-4 py-3 text-financial-value tabular-nums font-bold outline-none transition-colors duration-150 ease-out focus:border-accent ${
               type === "income" ? "text-positive" : "text-negative"
             }`}
           />
-          <select
+          <Select
             name="currency"
             value={currency}
             onChange={(event) => setCurrency(event.target.value)}
-            className="rounded-control border border-border bg-surface px-3 text-body text-text outline-none focus:border-accent"
+            aria-label="Currency"
+            className="w-24"
           >
             {CURRENCIES.map((code) => (
               <option key={code} value={code}>
                 {code}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         {baseAmountPreview && (
-          <span className="text-caption text-text-muted">≈ {baseAmountPreview}</span>
+          <span className="text-helper text-text-secondary">≈ {baseAmountPreview}</span>
         )}
       </div>
 
@@ -121,15 +122,16 @@ export function TransactionForm({
       />
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-caption font-medium text-text-muted">Category</span>
+        <span className="text-card-label font-medium text-text-secondary">Category</span>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => (
             <button
               key={c}
               type="button"
+              aria-pressed={category === c}
               onClick={() => setCategory(c)}
-              className={`rounded-pill px-3 py-1.5 text-caption font-medium transition-colors duration-150 ease-out ${
-                category === c ? "bg-accent text-white" : "bg-accent/10 text-accent"
+              className={`rounded-pill px-3 py-1.5 text-caption font-medium transition-colors duration-150 ease-out active:scale-[0.97] ${
+                category === c ? "bg-accent text-white" : "bg-accent/10 text-accent hover:bg-accent/20"
               }`}
             >
               {c}
@@ -152,8 +154,8 @@ export function TransactionForm({
       {isEdit && (
         <Button
           type="button"
-          variant="destructive"
-          disabled={isDeleting}
+          variant="danger"
+          loading={isDeleting}
           onClick={() => {
             if (!confirm("Delete this transaction?")) return;
             startDeleteTransition(async () => {
@@ -162,7 +164,7 @@ export function TransactionForm({
             });
           }}
         >
-          {isDeleting ? "Deleting…" : "Delete transaction"}
+          Delete transaction
         </Button>
       )}
 
@@ -170,8 +172,8 @@ export function TransactionForm({
         <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
           Cancel
         </Button>
-        <Button type="submit" disabled={!canSave} className="flex-1">
-          {pending ? "Saving…" : "Save"}
+        <Button type="submit" disabled={amountNumber <= 0 || !category} loading={pending} className="flex-1">
+          Save
         </Button>
       </div>
     </form>

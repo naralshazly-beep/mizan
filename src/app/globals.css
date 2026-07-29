@@ -6,15 +6,16 @@
  * tokens generate instead (bg-accent, text-negative, rounded-card, ...).
  */
 :root {
-  --accent: #e8791e;
-  --accent-hover: #d96a12;
-  --bg: #f7f3ec;
+  --accent: #f47b20;
+  --accent-hover: #e56a12;
+  --bg: #faf8f5;
   --surface: #ffffff;
-  --text: #1a1a1a;
-  --text-muted: #777777;
-  --positive: #1e7a3d;
-  --negative: #c0392b;
-  --border: #ede7dd;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --positive: #16a34a;
+  --negative: #dc2626;
+  --warning: #d97706;
+  --border: #ece8e3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,7 +36,16 @@
   --color-text-muted: var(--text-muted);
   --color-positive: var(--positive);
   --color-negative: var(--negative);
+  --color-warning: var(--warning);
   --color-border: var(--border);
+
+  /* semantic aliases (new naming) */
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text-muted);
+  --color-success: var(--positive);
+  --color-danger: var(--negative);
 
   /* typography */
   --font-sans: var(--font-inter);
@@ -52,14 +62,27 @@
   --text-big-number: 32px;
   --text-big-number--line-height: 1.2;
 
+  /* typography (semantic aliases) */
+  --text-page-title: 24px;
+  --text-page-title--line-height: 1.4;
+  --text-section-title: 16px;
+  --text-section-title--line-height: 1.5;
+  --text-card-label: 12px;
+  --text-card-label--line-height: 1.5;
+  --text-financial-value: 32px;
+  --text-financial-value--line-height: 1.2;
+  --text-helper: 12px;
+  --text-helper--line-height: 1.5;
+
   /* shape */
-  --radius-card: 20px;
+  --radius-card: 16px;
+  --radius-modal: 20px;
   --radius-control: 12px;
   --radius-pill: 999px;
 
   /* shadows */
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-sheet: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-sheet: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
 body {

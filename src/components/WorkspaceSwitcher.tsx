@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { FormError } from "@/components/ui/FormMessage";
 
 type WorkspaceSwitcherProps = {
@@ -41,10 +42,12 @@ export function WorkspaceSwitcher({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-w-0 items-center gap-1 text-header font-semibold text-text"
+        className="flex min-w-0 items-center gap-2 rounded-control border border-border bg-bg px-3 py-2 transition-colors duration-150 ease-out hover:bg-border/40 active:bg-border/60"
       >
-        <span className="truncate">{current?.name ?? "Workspace"}</span>
-        <span className="text-text-muted">▾</span>
+        <span className="truncate text-section-title font-semibold text-text">
+          {current?.name ?? "Workspace"}
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-text-muted">▾</span>
       </button>
 
       <Sheet
@@ -58,7 +61,11 @@ export function WorkspaceSwitcher({
               <form key={ws.id} action={setActiveWorkspace.bind(null, ws.id)}>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-between gap-3 rounded-control border border-border bg-surface p-3 text-left transition-colors duration-150 ease-out hover:bg-bg"
+                  className={`flex w-full items-center justify-between gap-3 rounded-control border p-3 text-left transition-colors duration-150 ease-out ${
+                    ws.id === currentWorkspaceId
+                      ? "border-accent bg-accent/5"
+                      : "border-border bg-surface hover:bg-bg"
+                  }`}
                 >
                   <div className="flex flex-col gap-1.5">
                     <span className="text-body font-medium text-text">{ws.name}</span>
@@ -82,20 +89,13 @@ export function WorkspaceSwitcher({
           <form action={formAction} className="flex flex-col gap-4 py-4">
             <Input id="name" name="name" type="text" label="Workspace name" required />
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-caption font-medium text-text-muted">Base currency</span>
-              <select
-                name="baseCurrency"
-                defaultValue="USD"
-                className="rounded-control border border-border bg-surface px-4 py-3 text-body text-text outline-none focus:border-accent"
-              >
-                {CURRENCIES.map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select name="baseCurrency" label="Base currency" defaultValue="USD">
+              {CURRENCIES.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </Select>
 
             {state.error && <FormError>{state.error}</FormError>}
 
