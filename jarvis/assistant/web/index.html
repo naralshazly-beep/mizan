@@ -238,7 +238,11 @@
   // ------------------------------------------------------------------ api
   async function api(path, opts = {}) {
     const res = await fetch(path, { ...opts, headers: { "X-Jarvis-Token": TOKEN, ...(opts.headers || {}) } });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      let detail = `${res.status} ${res.statusText}`;
+      try { detail = (await res.json()).error || detail; } catch {}
+      throw new Error(detail);
+    }
     return res.json();
   }
 

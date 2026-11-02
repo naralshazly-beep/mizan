@@ -10,6 +10,7 @@ import json
 import secrets
 import sys
 import threading
+import traceback
 import webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -139,6 +140,13 @@ def make_handler(app: Jarvis, port: int):
             self._json({"error": "Not found."}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
+            try:
+                self._post()
+            except Exception as exc:  # noqa: BLE001 - always answer, never drop the connection
+                traceback.print_exc()
+                self._json({"error": f"{type(exc).__name__}: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+
+        def _post(self) -> None:
             if not self._authorized():
                 return self._json({"error": "Unauthorized."}, HTTPStatus.UNAUTHORIZED)
             body = self._body()

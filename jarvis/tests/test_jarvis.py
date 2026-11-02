@@ -205,6 +205,13 @@ class ServerAuthTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("Ollama isn't running", json.loads(data)["reply"])
 
+    def test_crash_returns_json_error(self):
+        with mock.patch.object(self.app.ears, "transcribe", side_effect=RuntimeError("model download failed")):
+            status, data = self.req("/api/audio", b"x" * 3000,
+                                    {"X-Jarvis-Token": server.TOKEN, "Content-Type": "audio/webm"})
+        self.assertEqual(status, 500)
+        self.assertIn("model download failed", json.loads(data)["error"])
+
     def test_rejects_foreign_host(self):
         status, _ = self.req("/", headers={"Host": "evil.example:80"})
         self.assertEqual(status, 403)
