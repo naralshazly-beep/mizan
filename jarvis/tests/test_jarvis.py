@@ -147,6 +147,20 @@ class ClaudeLoopTest(unittest.TestCase):
         self.assertEqual(results[0]["tool_use_id"], "tu_1")
         self.assertFalse(results[0]["is_error"])
 
+    def test_haiku_skips_fallbacks(self):
+        from types import SimpleNamespace as NS
+
+        os.environ.update(ANTHROPIC_API_KEY="test-key", JARVIS_CLAUDE_MODEL="claude-haiku-5-5")
+        try:
+            b = brain.make_brain(load_config())
+        finally:
+            os.environ.pop("ANTHROPIC_API_KEY")
+            os.environ.pop("JARVIS_CLAUDE_MODEL")
+        done = NS(stop_reason="end_turn", content=[NS(type="text", text="Hi.")])
+        with mock.patch.object(b.client.beta.messages, "create", return_value=done) as create:
+            b.ask("hi")
+        self.assertNotIn("fallbacks", create.call_args.kwargs)
+
 
 class ServerAuthTest(unittest.TestCase):
     @classmethod

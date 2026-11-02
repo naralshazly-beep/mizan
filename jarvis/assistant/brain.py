@@ -33,6 +33,9 @@ How to behave:
 
 MAX_STEPS = 8
 
+# Models that accept server-side refusal fallbacks (Haiku doesn't).
+FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
+
 
 @dataclass
 class Action:
@@ -121,6 +124,10 @@ class ClaudeBrain:
 
     def _call(self):
         try:
+            extra: dict[str, Any] = {}
+            if self.model in FALLBACK_MODELS:
+                # If a safety classifier declines, retry on Anthropic's recommended fallback model.
+                extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
             return self.client.beta.messages.create(
                 model=self.model,
                 max_tokens=16000,
@@ -128,9 +135,7 @@ class ClaudeBrain:
                 tools=self.tools,
                 messages=self.messages,
                 output_config={"effort": self.effort},
-                # If a safety classifier declines, retry on Anthropic's recommended fallback model.
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
+                **extra,
             )
         except self._anthropic.AuthenticationError as exc:
             raise BrainError("The Anthropic API key was rejected. Check ANTHROPIC_API_KEY.") from exc

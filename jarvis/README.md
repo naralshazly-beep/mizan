@@ -71,7 +71,7 @@ Copy `.env.example` to `.env`. Every value is optional.
 |---|---|---|
 | `JARVIS_BRAIN` | `auto` | `auto` uses Claude when an API key is set, otherwise Ollama. Can force `claude` or `ollama`. |
 | `ANTHROPIC_API_KEY` | – | Turns on the Claude brain. |
-| `JARVIS_CLAUDE_MODEL` | `claude-opus-5-5` | Claude model. |
+| `JARVIS_CLAUDE_MODEL` | `claude-opus-5-5` | Claude model. `claude-haiku-5-5` is much cheaper and faster, and fine for simple commands. |
 | `JARVIS_CLAUDE_EFFORT` | `low` | `low` is fastest; `medium` or `high` think harder. |
 | `JARVIS_OLLAMA_MODEL` | `qwen2.5:7b` | Any Ollama model that supports tool calling (good at Arabic: `qwen2.5`). |
 | `JARVIS_WHISPER_MODEL` | `small` | `medium` or `large-v3` recognize Arabic better but are slower. |
