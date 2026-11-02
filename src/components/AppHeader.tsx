@@ -7,7 +7,7 @@ type AppHeaderProps = {
   workspaces: WorkspaceSummary[];
   currentWorkspaceId: string;
   userId: string;
-  active: "dashboard" | "transactions" | "debts";
+  active: "dashboard" | "transactions" | "debts" | "trends";
 };
 
 const LINK_BASE =
@@ -45,6 +45,12 @@ export function AppHeader({ workspaces, currentWorkspaceId, userId, active }: Ap
             Debts
           </Link>
         )}
+        <Link
+          href="/trends"
+          className={`${LINK_BASE} ${active === "trends" ? "border-accent text-text" : "border-transparent text-text-muted hover:text-text"}`}
+        >
+          Trends
+        </Link>
       </nav>
       <form action={logout} className="shrink-0">
         <button

@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/forgot-password", "/reset-password"];
+// /api/cron authenticates with CRON_SECRET instead of a user session.
+const PUBLIC_PATHS = ["/login", "/auth", "/forgot-password", "/reset-password", "/api/cron"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
