@@ -164,6 +164,7 @@ class OllamaBrain:
     def __init__(self, config: Config) -> None:
         self.url = config.ollama_url
         self.model = config.ollama_model
+        self.keep_alive = config.ollama_keep_alive
         self.tools = [
             {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.schema()}}
             for t in T.TOOLS
@@ -212,7 +213,7 @@ class OllamaBrain:
                 "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *self.messages],
                 "tools": self.tools,
                 "stream": False,
-                "keep_alive": "30m",
+                "keep_alive": self.keep_alive,
             }
         ).encode()
         req = urllib.request.Request(f"{self.url}/api/chat", data=body, headers={"Content-Type": "application/json"})

@@ -74,6 +74,7 @@ Copy `.env.example` to `.env`. Every value is optional.
 | `JARVIS_CLAUDE_MODEL` | `claude-opus-5-5` | Claude model. `claude-haiku-5-5` is much cheaper and faster, and fine for simple commands. |
 | `JARVIS_CLAUDE_EFFORT` | `low` | `low` is fastest; `medium` or `high` think harder. |
 | `JARVIS_OLLAMA_MODEL` | `qwen2.5:7b` | Any Ollama model that supports tool calling (good at Arabic: `qwen2.5`). |
+| `JARVIS_OLLAMA_KEEP_ALIVE` | `5m` | How long the Ollama model stays in RAM after a command. Use `1m` on 8 GB Macs. |
 | `JARVIS_WHISPER_MODEL` | `small` | `medium` or `large-v3` recognize Arabic better but are slower. |
 | `JARVIS_TTS` | `1` | Speak replies with macOS `say` (uses the Arabic voice *Majed* when installed). |
 | `JARVIS_PORT` | `8765` | Port for the local UI. |
