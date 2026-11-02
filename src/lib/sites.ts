@@ -32,6 +32,8 @@ export type Site = {
   category: Category;
   url: string;
   probe?: string;
+  /** Extra request headers, e.g. a consent cookie so we skip cookie banners. */
+  headers?: Record<string, string>;
   check: Check;
 };
 
@@ -42,7 +44,7 @@ export const SITES: Site[] = [
   { id: "reddit", name: "Reddit", category: "social", url: "https://www.reddit.com/user/{}", probe: "https://www.reddit.com/user/{}/about.json", check: status },
   { id: "telegram", name: "Telegram", category: "social", url: "https://t.me/{}", check: { type: "found", text: "tgme_page_title" } },
   { id: "snapchat", name: "Snapchat", category: "social", url: "https://www.snapchat.com/add/{}", check: status },
-  { id: "youtube", name: "YouTube", category: "social", url: "https://www.youtube.com/@{}", check: status },
+  { id: "youtube", name: "YouTube", category: "social", url: "https://www.youtube.com/@{}", headers: { Cookie: "SOCS=CAI; CONSENT=YES+1" }, check: status },
   { id: "mastodon", name: "Mastodon (mastodon.social)", category: "social", url: "https://mastodon.social/@{}", probe: "https://mastodon.social/api/v1/accounts/lookup?acct={}", check: status },
   { id: "bluesky", name: "Bluesky", category: "social", url: "https://bsky.app/profile/{}.bsky.social", probe: "https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle={}.bsky.social", check: status },
   { id: "tumblr", name: "Tumblr", category: "social", url: "https://{}.tumblr.com", check: status },

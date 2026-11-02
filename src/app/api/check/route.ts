@@ -34,6 +34,9 @@ function isChallenge(body: string): boolean {
   return CHALLENGE_MARKERS.some((m) => body.includes(m));
 }
 
+/** Redirects to these pages tell us nothing about whether the user exists. */
+const GATE_REDIRECT = /consent\.|\/consent|login|signin|sign_in|accounts\.|captcha|challenge/i;
+
 async function readBody(res: Response): Promise<string> {
   const text = await res.text();
   return text.length > MAX_BODY ? text.slice(0, MAX_BODY) : text;
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const res = await fetch(probe, {
-      headers: HEADERS,
+      headers: { ...HEADERS, ...site.headers },
       // Most "user doesn't exist" pages redirect somewhere else, so a
       // redirect counts as "not found" for status-based checks.
       redirect: site.check.type === "status" ? "manual" : "follow",
@@ -72,8 +75,11 @@ export async function GET(request: NextRequest) {
         if (isChallenge(await readBody(res))) result.reason = "bot check";
         else result.status = "found";
       }
-      else if (res.status === 404 || res.status === 410 || (res.status >= 300 && res.status < 400))
-        result.status = "not_found";
+      else if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location") ?? "";
+        if (GATE_REDIRECT.test(location)) result.reason = "redirected to consent/login page";
+        else result.status = "not_found";
+      } else if (res.status === 404 || res.status === 410) result.status = "not_found";
       else result.reason = `HTTP ${res.status}`;
     } else if (res.status === 429 || res.status === 403 || res.status >= 500) {
       result.reason = `HTTP ${res.status}`;
