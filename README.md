@@ -34,3 +34,26 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Daily trends room (`/trends`)
+
+Every morning a Vercel Cron job (`vercel.json`, 02:00 UTC = 06:00 Dubai) calls
+`/api/cron/daily-trends`, which:
+
+1. asks Claude (with web search) to research the most-engaged topics of the last
+   24–48h across the categories in `src/lib/trends/config.ts`;
+2. turns the notes into a structured report: morning overview, per-topic summary,
+   why it's trending, analysis, audience interest score, content angle, hook,
+   carousel slides, hashtags and sources;
+3. saves it to Supabase (`trend_reports`, `trend_items`).
+
+The `/trends` page shows the report with status tabs (review → scheduled →
+published / rejected), category filters, slide previews and a "generate now" button.
+
+Setup:
+
+1. Run `supabase/migrations/0005_trends.sql` in the Supabase SQL Editor.
+2. Set env vars (see `.env.local.example`): `ANTHROPIC_API_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, optional `TRENDS_TIMEZONE`.
+3. Deploy to Vercel — the cron is picked up from `vercel.json`.
+   Test manually: `curl -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron/daily-trends`.
