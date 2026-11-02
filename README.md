@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# بصمة (Basma)
 
-## Getting Started
+اكتب يوزرنيم وشوف هو موجود على أنهي منصات (حوالي 63 منصة: تواصل، برمجة، ألعاب، تصميم، موسيقى).
+معمولة عشان تفحص بصمتك الرقمية أنت، وبتدور في الصفحات العامة بس.
 
-First, run the development server:
+## التشغيل
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## إزاي بتشتغل
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/lib/sites.ts`: لستة المنصات. كل منصة ليها لينك البروفايل وطريقة الفحص:
+  - `status`: الصفحة بترجع 200 لو الحساب موجود و404 (أو تحويل) لو مش موجود.
+  - `found` / `notFound`: بندور على نص معين في الصفحة أو في الـ API.
+- `src/app/api/check/route.ts`: بيفحص منصة واحدة من السيرفر (عشان CORS). لو الموقع رفض الطلب
+  (403/429) أو طلع صفحة حماية من البوتات أو اتأخر، النتيجة بتبقى «غير مؤكد» بدل ما نخمن.
+- `src/app/page.tsx`: الواجهة. بتفحص 8 منصات في نفس الوقت وبتعرض النتايج أول بأول، وفيها فلاتر وتنزيل CSV.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## إضافة منصة
 
-## Learn More
+ضيف سطر في `SITES`:
 
-To learn more about Next.js, take a look at the following resources:
+```ts
+{ id: "example", name: "Example", category: "social", url: "https://example.com/{}", check: { type: "status" } },
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+جرّبها على يوزرنيم موجود ويوزرنيم مش موجود قبل ما تعتمد عليها.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ملاحظات
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- «موجود» معناها إن فيه حساب بنفس الاسم، مش شرط يكون بتاعك.
+- منصات زي Instagram وX وTikTok وFacebook وLinkedIn محتاجة تسجيل دخول أو بتمنع الفحص الآلي،
+  عشان كده مش في اللستة.
+- بعض المواقع بتمنع الطلبات اللي جاية من سيرفرات (datacenter IPs)، فالنتايج بتبقى أدق لما تشغلها على جهازك.
