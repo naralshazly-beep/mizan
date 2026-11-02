@@ -71,6 +71,20 @@ class ToolTests(unittest.TestCase):
         self.assertFalse(is_arabic("Opened Safari."))
 
 
+class DotenvTest(unittest.TestCase):
+    def test_later_line_wins(self):
+        from assistant import config
+
+        path = Path(tempfile.mkdtemp()) / ".env"
+        path.write_text("JARVIS_T_MODEL=claude-opus-5-5\nJARVIS_T_MODEL=claude-haiku-5-5\n", encoding="utf-8")
+        os.environ.pop("JARVIS_T_MODEL", None)
+        try:
+            config._load_dotenv(path)
+            self.assertEqual(os.environ["JARVIS_T_MODEL"], "claude-haiku-5-5")
+        finally:
+            os.environ.pop("JARVIS_T_MODEL", None)
+
+
 class DecodeAudioTest(unittest.TestCase):
     def test_decodes_browser_webm_opus(self):
         try:
