@@ -176,7 +176,14 @@ def make_handler(app: Jarvis, port: int):
 def main() -> None:
     app = Jarvis()
     port = app.config.port
-    server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(app, port))
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(app, port))
+    except OSError as exc:
+        if exc.errno in (48, 98):  # address already in use (macOS, Linux)
+            print(f"\n  Jarvis is already running on port {port} (maybe in another Terminal tab).")
+            print(f"  Stop it and start again with:\n\n    lsof -ti:{port} | xargs kill; sleep 1; python -m assistant\n")
+            sys.exit(1)
+        raise
     url = f"http://localhost:{port}/"
     print(f"\n  JARVIS {__version__}  ·  brain: {app.brain.name} ({app.brain.label})")
     if not IS_MAC:
