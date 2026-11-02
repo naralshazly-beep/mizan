@@ -20,6 +20,27 @@ def is_arabic(text: str) -> bool:
     return sum(1 for c in letters if _ARABIC.match(c)) / len(letters) > 0.3
 
 
+def decode_audio(path: Path, sampling_rate: int = 16000):
+    """Decode any browser recording to 16 kHz mono float32.
+
+    We do this ourselves instead of letting faster-whisper do it, because its
+    decoder passes an argument that newer PyAV releases removed.
+    """
+    import av
+    import numpy as np
+
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=sampling_rate)
+    chunks = []
+    with av.open(str(path)) as container:
+        stream = container.streams.audio[0]
+        for frame in container.decode(stream):
+            chunks.extend(f.to_ndarray() for f in resampler.resample(frame))
+        chunks.extend(f.to_ndarray() for f in resampler.resample(None))
+    if not chunks:
+        return np.zeros(0, dtype=np.float32)
+    return np.concatenate(chunks, axis=1).reshape(-1).astype(np.float32) / 32768.0
+
+
 class Transcriber:
     """Lazy-loads faster-whisper on first use (the model downloads once, ~500 MB for `small`)."""
 
@@ -43,8 +64,11 @@ class Transcriber:
         try:
             with self._lock:
                 model = self._load()
+                audio_array = decode_audio(path)
+                if audio_array.size < 1600:  # under 0.1 s: nothing was said
+                    return "", ""
                 segments, info = model.transcribe(
-                    str(path),
+                    audio_array,
                     beam_size=5,
                     vad_filter=True,
                     # Nudges recognition toward the languages and words we expect.

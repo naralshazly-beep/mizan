@@ -71,6 +71,32 @@ class ToolTests(unittest.TestCase):
         self.assertFalse(is_arabic("Opened Safari."))
 
 
+class DecodeAudioTest(unittest.TestCase):
+    def test_decodes_browser_webm_opus(self):
+        try:
+            import av
+            import numpy as np
+        except ImportError:
+            self.skipTest("PyAV not installed")
+        from assistant.speech import decode_audio
+
+        path = Path(tempfile.mkdtemp()) / "rec.webm"
+        with av.open(str(path), mode="w") as out:  # what Chrome's MediaRecorder produces
+            stream = out.add_stream("libopus", rate=48000, layout="mono")
+            t = np.arange(48000) / 48000
+            tone = (np.sin(2 * np.pi * 440 * t) * 12000).astype(np.int16).reshape(1, -1)
+            frame = av.AudioFrame.from_ndarray(tone, format="s16", layout="mono")
+            frame.sample_rate = 48000
+            for packet in stream.encode(frame):
+                out.mux(packet)
+            for packet in stream.encode(None):
+                out.mux(packet)
+        audio = decode_audio(path)
+        self.assertEqual(audio.dtype, np.float32)
+        self.assertAlmostEqual(audio.size / 16000, 1.0, delta=0.1)  # 1 s at 16 kHz
+        self.assertGreater(float(np.abs(audio).max()), 0.2)
+
+
 class FakeOllama(BaseHTTPRequestHandler):
     """First call asks for open_app, second call answers."""
 
