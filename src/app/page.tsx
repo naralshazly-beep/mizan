@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { CATEGORY_LABELS, SITES, USERNAME_RE, type Site } from "@/lib/sites";
 import type { CheckResult, CheckStatus } from "./api/check/route";
 
@@ -115,6 +116,9 @@ export default function Home() {
         <p className="mt-3 text-muted">
           اكتب اليوزرنيم بتاعك وشوف هو ظاهر على أنهي منصات من {SITES.length} منصة.
         </p>
+        <Link href="/image" className="mt-3 inline-block text-sm text-accent hover:underline">
+          البحث بالصورة ←
+        </Link>
       </header>
 
       <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">
