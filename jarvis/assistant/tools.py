@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from . import mac
+from . import mac, youtube
+from .settings import get_profile, save_profile
 from .config import DATA_DIR
 
 # --------------------------------------------------------------- results
@@ -207,6 +208,100 @@ def set_volume(level: int) -> ToolResult:
     return ToolResult(f"Volume set to {level}%.")
 
 
+# --------------------------------------------------------------- YouTube
+
+_REUSE_TAB = """
+on run argv
+  set u to item 1 of argv
+  tell application "System Events" to set isRunning to (exists process "Google Chrome")
+  if not isRunning then return "no"
+  tell application "Google Chrome"
+    repeat with w in windows
+      set i to 0
+      repeat with t in tabs of w
+        set i to i + 1
+        if (URL of t) contains "youtube.com/watch" then
+          set URL of t to u
+          set active tab index of w to i
+          set index of w to 1
+          activate
+          return "ok"
+        end if
+      end repeat
+    end repeat
+  end tell
+  return "no"
+end run
+"""
+
+
+def _open_youtube(url: str) -> None:
+    """Reuse an open YouTube tab in Chrome when there is one, so tabs don't pile up."""
+    try:
+        if mac.applescript(_REUSE_TAB, url) == "ok":
+            return
+    except mac.MacError:
+        pass
+    mac.run(["open", url])
+
+
+def play_youtube(query: str, mix: bool = False) -> ToolResult:
+    mac.require_mac()
+    try:
+        video = youtube.search_video(query)
+    except youtube.YouTubeError as exc:
+        return ToolResult(str(exc), ok=False)
+    _open_youtube(video.url(mix=mix))
+    return ToolResult(f"Playing on YouTube{' (mix)' if mix else ''}: {video.title}")
+
+
+def play_latest_from_channel(channel: str, which: int = 1) -> ToolResult:
+    mac.require_mac()
+    profile = get_profile()
+    key = channel.strip().lower()
+    try:
+        cached = profile["channels"].get(key)
+        if cached:
+            channel_id, title = cached["id"], cached["title"]
+        else:
+            found = youtube.find_channel(channel)
+            channel_id, title = found.id, found.title
+            profile["channels"][key] = {"id": channel_id, "title": title}
+            save_profile(profile)
+        videos = youtube.latest_videos(channel_id)
+    except youtube.YouTubeError as exc:
+        return ToolResult(str(exc), ok=False)
+    index = max(1, min(int(which), len(videos))) - 1
+    video = videos[index]
+    _open_youtube(video.url())
+    return ToolResult(f"Playing the {'latest' if index == 0 else f'#{index + 1} newest'} video from {title}: {video.title}")
+
+
+# --------------------------------------------------------------- memory about the user
+
+
+def remember(fact: str) -> ToolResult:
+    fact = fact.strip()
+    if not fact:
+        return ToolResult("Nothing to remember.", ok=False)
+    profile = get_profile()
+    if fact not in profile["facts"]:
+        profile["facts"].append(fact)
+        save_profile(profile)
+    return ToolResult(f"Remembered: {fact}")
+
+
+def forget(fact: str) -> ToolResult:
+    profile = get_profile()
+    needle = fact.strip().lower()
+    kept = [f for f in profile["facts"] if needle not in f.lower()]
+    if len(kept) == len(profile["facts"]):
+        return ToolResult(f"I don't have anything saved about {fact!r}.", ok=False)
+    profile["facts"] = kept
+    save_profile(profile)
+    return ToolResult(f"Forgot what I knew about {fact!r}.")
+
+
 # --------------------------------------------------------------- email (Mail.app)
 
 _LIST_MAIL = """
@@ -370,6 +465,15 @@ TOOLS: list[Tool] = [
           "query": {**_STR, "description": "Song, artist or album for play_song; otherwise empty."},
           "player": {"type": "string", "enum": ["Music", "Spotify"]}},
          music, ["action", "query", "player"]),
+    Tool("play_youtube", "Search YouTube and play the top video in the browser. Use for songs, artists, "
+         "mahraganat, clips, anything to watch or listen to. Set mix=true for a continuous mix of similar songs.",
+         {"query": {**_STR, "description": "What to search for, e.g. 'Wegz' or 'رامي صبري'."},
+          "mix": {"type": "boolean", "description": "true = play a YouTube mix based on the top result."}},
+         play_youtube, ["query", "mix"]),
+    Tool("play_latest_from_channel", "Play the newest video (or the Nth newest) uploaded by a YouTube channel.",
+         {"channel": {**_STR, "description": "Channel name or @handle."},
+          "which": {"type": "integer", "description": "1 = newest, 2 = the one before, ..."}},
+         play_latest_from_channel, ["channel", "which"]),
     Tool("set_volume", "Set the Mac's output volume.",
          {"level": {"type": "integer", "description": "0-100"}}, set_volume, ["level"]),
     Tool("list_emails", "List recent emails from the Mail app inbox with an id, sender, subject and snippet.",
@@ -385,6 +489,10 @@ TOOLS: list[Tool] = [
     Tool("learn_shortcut", "Remember a personal voice command: when the user says `phrase`, carry out `instructions`.",
          {"phrase": _STR, "instructions": {**_STR, "description": "What to do, in plain words."}},
          learn_shortcut, ["phrase", "instructions"]),
+    Tool("remember", "Save a lasting fact about the user (tastes, favorite artists, channels, habits) to use later.",
+         {"fact": _STR}, remember, ["fact"]),
+    Tool("forget", "Delete saved facts about the user that contain these words.",
+         {"fact": _STR}, forget, ["fact"]),
     Tool("forget_shortcut", "Forget a personal voice command.",
          {"phrase": _STR}, forget_shortcut, ["phrase"]),
 ]
@@ -416,5 +524,7 @@ _OPTIONAL_DEFAULTS = {
     "arrange_window": {"app"},
     "find_files": {"kind", "limit"},
     "music": {"query", "player"},
+    "play_youtube": {"mix"},
+    "play_latest_from_channel": {"which"},
     "list_emails": {"count", "unread_only"},
 }

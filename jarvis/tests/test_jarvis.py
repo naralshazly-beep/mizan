@@ -71,6 +71,94 @@ class ToolTests(unittest.TestCase):
         self.assertFalse(is_arabic("Opened Safari."))
 
 
+class YouTubeParseTest(unittest.TestCase):
+    def test_search_and_channel_and_feed(self):
+        from assistant import youtube
+
+        page = ('{"adSlotRenderer":{"videoId":"AAAAAAAAAAA"}}'
+                '{"videoRenderer":{"videoId":"abc123DEF45","thumbnail":{},'
+                '"title":{"runs":[{"text":"\\u0648\\u064a\\u062c\\u0632 - Wegz"}]}}}'
+                '{"videoRenderer":{"videoId":"zzz123DEF45","title":{"runs":[{"text":"second"}]}}}')
+        videos = youtube.parse_search_videos(page)
+        self.assertEqual(videos[0].id, "abc123DEF45")
+        self.assertEqual(videos[0].title, "ويجز - Wegz")
+        self.assertEqual(videos[0].url(mix=True), "https://www.youtube.com/watch?v=abc123DEF45&list=RDabc123DEF45")
+
+        chan = '{"channelRenderer":{"channelId":"UCabcdefghijklmnopqrstuv","title":{"simpleText":"فيلم في الخمسينة"}}}'
+        self.assertEqual(youtube.parse_search_channels(chan)[0].title, "فيلم في الخمسينة")
+
+        feed = """<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"
+            xmlns:yt="http://www.youtube.com/xml/schemas/2015">
+            <entry><yt:videoId>NEWEST00001</yt:videoId><title>ملخص فيلم جديد</title></entry>
+            <entry><yt:videoId>OLDER000002</yt:videoId><title>older</title></entry></feed>"""
+        self.assertEqual([v.id for v in youtube.parse_feed(feed)], ["NEWEST00001", "OLDER000002"])
+
+    def test_latest_from_channel_caches_channel(self):
+        from assistant import youtube
+
+        with mock.patch.object(mac, "require_mac"), \
+                mock.patch.object(youtube, "find_channel", return_value=youtube.Channel("UCx", "Film")) as find, \
+                mock.patch.object(youtube, "latest_videos", return_value=[youtube.Video("v1xxxxxxxxx", "Newest")]), \
+                mock.patch.object(tools, "_open_youtube") as opened:
+            self.assertTrue(tools.execute("play_latest_from_channel", {"channel": "فيلم في الخمسينة"}).ok)
+            self.assertTrue(tools.execute("play_latest_from_channel", {"channel": "فيلم في الخمسينة"}).ok)
+        self.assertEqual(find.call_count, 1)  # second time comes from the saved profile
+        opened.assert_called_with("https://www.youtube.com/watch?v=v1xxxxxxxxx")
+
+
+class MemoryTest(unittest.TestCase):
+    def test_remember_and_forget(self):
+        from assistant.settings import get_profile
+
+        tools.execute("remember", {"fact": "Likes Wegz, Lege-Cy and Ramy Sabry"})
+        self.assertIn("Likes Wegz, Lege-Cy and Ramy Sabry", get_profile()["facts"])
+        self.assertIn("Likes Wegz", brain._context_note())
+        tools.execute("forget", {"fact": "wegz"})
+        self.assertEqual(get_profile()["facts"], [])
+
+
+class VoiceTest(unittest.TestCase):
+    def test_voice_style_in_context(self):
+        from assistant.settings import update_settings
+
+        update_settings(voice="libyan")
+        self.assertIn("Libyan", brain._context_note())
+        update_settings(voice="dark")
+
+    def test_echo_effect(self):
+        try:
+            import av
+            import numpy as np
+        except ImportError:
+            self.skipTest("PyAV not installed")
+        from assistant.speech import add_echo
+
+        d = Path(tempfile.mkdtemp())
+        with av.open(str(d / "in.mp3"), "w") as out:
+            stream = out.add_stream("mp3", rate=24000, layout="mono")
+            tone = (np.sin(2 * np.pi * 200 * np.arange(24000) / 24000) * 9000).astype(np.int16).reshape(1, -1)
+            frame = av.AudioFrame.from_ndarray(tone, format="s16", layout="mono")
+            frame.sample_rate = 24000
+            for packet in stream.encode(frame):
+                out.mux(packet)
+            for packet in stream.encode(None):
+                out.mux(packet)
+        add_echo(d / "in.mp3", d / "out.wav")
+        with av.open(str(d / "out.wav")) as c:
+            self.assertGreater(c.duration / 1e6, 1.0)
+
+    def test_neural_failure_falls_back_to_say(self):
+        from assistant import speech
+
+        spk = speech.Speaker(enabled=False, voice="egyptian")
+        spk.enabled = True
+        spk._mac_voices = {"Majed"}
+        with mock.patch.object(speech.Speaker, "_neural", side_effect=OSError("offline")), \
+                mock.patch.object(speech.subprocess, "Popen") as popen:
+            spk._speak("أهلا", spk._generation)
+        self.assertEqual(popen.call_args.args[0], ["say", "-v", "Majed", "أهلا"])
+
+
 class DotenvTest(unittest.TestCase):
     def test_later_line_wins(self):
         from assistant import config
@@ -251,6 +339,15 @@ class ServerAuthTest(unittest.TestCase):
                                     {"X-Jarvis-Token": server.TOKEN, "Content-Type": "audio/webm"})
         self.assertEqual(status, 500)
         self.assertIn("model download failed", json.loads(data)["error"])
+
+    def test_change_voice(self):
+        hdr = {"X-Jarvis-Token": server.TOKEN, "Content-Type": "application/json"}
+        status, _ = self.req("/api/settings", json.dumps({"voice": "egyptian"}).encode(), hdr)
+        self.assertEqual(status, 200)
+        status, data = self.req("/api/status", headers={"X-Jarvis-Token": server.TOKEN})
+        self.assertEqual(json.loads(data)["voice"], "egyptian")
+        self.assertEqual(self.req("/api/settings", json.dumps({"voice": "robot"}).encode(), hdr)[0], 400)
+        self.req("/api/settings", json.dumps({"voice": "dark"}).encode(), hdr)
 
     def test_rejects_foreign_host(self):
         status, _ = self.req("/", headers={"Host": "evil.example:80"})

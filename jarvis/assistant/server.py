@@ -22,7 +22,8 @@ from . import tools as T
 from .brain import Action, BrainError, make_brain
 from .config import load_config
 from .mac import IS_MAC
-from .speech import Speaker, Transcriber
+from .settings import get_settings, update_settings
+from .speech import VOICES, Speaker, Transcriber
 
 WEB = Path(__file__).resolve().parent / "web"
 TOKEN = secrets.token_urlsafe(24)
@@ -35,10 +36,13 @@ class Jarvis:
         self.config = load_config()
         self.brain = make_brain(self.config)
         self.ears = Transcriber(self.config.whisper_model)
-        self.voice = Speaker(self.config.tts)
+        self.voice = Speaker(self.config.tts, get_settings()["voice"])
         self.lock = threading.Lock()
+        self.turns: list[dict[str, Any]] = []  # recent turns, so the HUD can show push-to-talk ones
+        self.listening = False
+        self.hotkey_on = False
 
-    def handle_text(self, text: str, transcript: str | None = None) -> dict[str, Any]:
+    def handle_text(self, text: str, transcript: str | None = None, source: str = "hud") -> dict[str, Any]:
         text = text.strip()
         if not text:
             return {"transcript": transcript or "", "reply": "", "actions": []}
@@ -51,11 +55,15 @@ class Jarvis:
             except BrainError as exc:
                 reply = str(exc)
             self.voice.say(reply)
-        return {
-            "transcript": transcript if transcript is not None else text,
-            "reply": reply,
-            "actions": [a.__dict__ for a in actions],
-        }
+            result = {
+                "id": (self.turns[-1]["id"] + 1) if self.turns else 1,
+                "source": source,
+                "transcript": transcript if transcript is not None else text,
+                "reply": reply,
+                "actions": [a.__dict__ for a in actions],
+            }
+            self.turns = [*self.turns[-9:], result]
+        return result
 
     def handle_audio(self, audio: bytes, content_type: str) -> dict[str, Any]:
         suffix = AUDIO_SUFFIX.get(content_type.split(";")[0].strip(), ".webm")
@@ -66,6 +74,26 @@ class Jarvis:
         if not text:
             return {"transcript": "", "reply": "", "actions": []}
         return self.handle_text(text, transcript=text)
+
+    def handle_hotkey_audio(self, audio) -> None:
+        """Called from the push-to-talk thread with 16 kHz float32 samples."""
+        self.listening = False
+        try:
+            text, _lang = self.ears.transcribe_array(audio)
+        except Exception as exc:  # noqa: BLE001 - keep the hotkey alive whatever happens
+            traceback.print_exc()
+            self.voice.say(f"Error: {exc}")
+            return
+        if text:
+            print(f"  🎙  {text}")
+            result = self.handle_text(text, transcript=text, source="hotkey")
+            print(f"  🤖  {result['reply']}")
+
+    def set_voice(self, voice: str) -> None:
+        if voice not in VOICES:
+            raise ValueError(f"Unknown voice {voice!r}")
+        update_settings(voice=voice)
+        self.voice.set_voice(voice)
 
     def status(self) -> dict[str, Any]:
         stats: dict[str, Any] = {}
@@ -85,6 +113,11 @@ class Jarvis:
             "model": self.brain.label,
             "mac": IS_MAC,
             "tts": self.voice.enabled,
+            "voice": self.voice.voice,
+            "voices": {k: v["label"] for k, v in VOICES.items()},
+            "hotkey": self.config.hotkey if self.hotkey_on else None,
+            "listening": self.listening,
+            "turns": self.turns[-5:],
             "shortcuts": T.load_shortcuts(),
             **stats,
         }
@@ -165,6 +198,14 @@ def make_handler(app: Jarvis, port: int):
                     app.brain.reset()
                 app.voice.stop()
                 return self._json({"ok": True})
+            if self.path == "/api/settings":
+                try:
+                    data = json.loads(body or b"{}")
+                    if "voice" in data:
+                        app.set_voice(str(data["voice"]))
+                except (json.JSONDecodeError, ValueError) as exc:
+                    return self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+                return self._json({"ok": True, "voice": app.voice.voice})
             if self.path == "/api/stop":
                 app.voice.stop()
                 return self._json({"ok": True})
@@ -174,6 +215,20 @@ def make_handler(app: Jarvis, port: int):
 
 
 def main() -> None:
+    if len(sys.argv) > 2 and sys.argv[1] == "remember":
+        for fact in sys.argv[2:]:
+            print("  " + T.remember(fact).text)
+        return None
+    if len(sys.argv) > 1 and sys.argv[1] == "memory":
+        from .settings import get_profile
+
+        for fact in get_profile()["facts"]:
+            print("  • " + fact)
+        return None
+    if len(sys.argv) > 1 and sys.argv[1] in ("install", "uninstall", "logs"):
+        from . import autostart
+
+        return getattr(autostart, sys.argv[1])()
     app = Jarvis()
     port = app.config.port
     try:
@@ -189,6 +244,19 @@ def main() -> None:
     if not IS_MAC:
         print("  Note: not running on macOS, so Mac actions will report an error.")
     print(f"  Open {url}  (Ctrl+C to quit)\n")
+    if IS_MAC and app.config.hotkey != "off":
+        from .hotkey import PushToTalk
+
+        def on_start() -> None:
+            app.listening = True
+            app.voice.stop()
+
+        try:
+            app.hotkey_on = PushToTalk(app.config.hotkey, app.handle_hotkey_audio, on_start).start()
+        except ValueError as exc:
+            print(f"  {exc}")
+        if app.hotkey_on:
+            print(f"  Hold {app.config.hotkey.replace('_', ' ').title()} anywhere to talk.\n")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

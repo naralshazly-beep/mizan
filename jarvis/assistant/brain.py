@@ -29,6 +29,10 @@ How to behave:
 - Use read_screen when the user asks about what is on their screen, then answer from what you read.
 - If a tool fails because of a macOS permission, tell the user which setting to allow.
 - If the user's words match one of their personal shortcuts, carry out that shortcut's instructions.
+- Follow the voice style given with each message (dialect and persona).
+- For songs, artists, mahraganat and anything to watch, use play_youtube. When the user asks for "something I like" or "a mix", pick from what you know about their taste and set mix=true.
+- When the user tells you a lasting preference (favorite artists, channels, habits), save it with remember.
+- If a request is ambiguous and the user has saved options for it (for example which Quran recitation or surah they like), ask one short question offering those options, then play their answer. Treat the Quran with respect: no jokes or persona tricks around it.
 - If no tool can do what was asked, say so plainly instead of pretending."""
 
 MAX_STEPS = 8
@@ -56,7 +60,14 @@ OnAction = Callable[[Action], None]
 
 def _context_note() -> str:
     """Per-turn context, sent inside the user message so the cached prefix never changes."""
+    from .settings import get_profile, get_settings
+    from .speech import voice_style
+
     lines = [f"[Local time: {datetime.now().strftime('%A %d %B %Y, %H:%M')}]"]
+    lines.append(f"[Voice style: {voice_style(get_settings().get('voice', 'dark'))}]")
+    facts = get_profile()["facts"]
+    if facts:
+        lines.append("[What you know about the user: " + " | ".join(facts) + "]")
     shortcuts = T.load_shortcuts()
     if shortcuts:
         lines.append("[User's personal shortcuts: " + "; ".join(f'"{k}" -> {v}' for k, v in shortcuts.items()) + "]")

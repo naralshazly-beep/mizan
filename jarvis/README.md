@@ -63,6 +63,42 @@ python -m assistant
 
 Grant **Microphone** (browser), **Accessibility** and **Screen Recording** (your terminal app) in System Settings → Privacy & Security. macOS asks for **Automation** the first time Jarvis talks to Music or Mail.
 
+### Voices
+
+Pick one from the **VOICE** menu in the web panel. Saved in `~/.jarvis/settings.json`.
+
+| Voice | Sound |
+|---|---|
+| **Dark** (default) | Deep, slow Egyptian voice with a hall echo, and a mysterious persona |
+| Egyptian / Egyptian female | Natural Egyptian Arabic (Microsoft neural voices Shakir / Salma) |
+| Libyan | Libyan Arabic (Omar), and Jarvis writes its replies in Libyan dialect |
+| Mac voice | Built-in `say`, works offline |
+
+The neural voices are free through `edge-tts` but need internet, and the reply text is sent to Microsoft's speech service. Without internet Jarvis falls back to the Mac voice.
+
+### Talk from anywhere, no browser
+
+Hold **Right Option** anywhere on the Mac, talk, and let go. You hear a "tink" when it starts listening and a "pop" when it stops. Change the key with `JARVIS_HOTKEY` (`right_command`, `right_shift`, `right_control`, `fn`, or `off`). macOS asks to allow **Input Monitoring** and the **Microphone** the first time.
+
+### Start automatically at login
+
+```bash
+python -m assistant install     # runs in the background now and at every login
+python -m assistant uninstall   # stop it
+python -m assistant logs        # see what it's doing
+```
+
+In the background Jarvis runs as "Python", so macOS asks again to allow Python for the Microphone, Input Monitoring, Accessibility and Screen Recording. Allow them, then run `python -m assistant install` once more. The web panel stays at http://localhost:8765 whenever you want it.
+
+### Memory
+
+Jarvis remembers your tastes (artists, channels, which Quran recitation you like) in `~/.jarvis/profile.json`. Tell it ("remember I like Wegz") or add facts from the terminal:
+
+```bash
+python -m assistant remember "I love Wegz, Lege-Cy and Ramy Sabry"
+python -m assistant memory      # list what it knows
+```
+
 ### Settings (`.env`)
 
 Copy `.env.example` to `.env`. Every value is optional.
@@ -76,7 +112,8 @@ Copy `.env.example` to `.env`. Every value is optional.
 | `JARVIS_OLLAMA_MODEL` | `qwen2.5:7b` | Any Ollama model that supports tool calling (good at Arabic: `qwen2.5`). |
 | `JARVIS_OLLAMA_KEEP_ALIVE` | `5m` | How long the Ollama model stays in RAM after a command. Use `1m` on 8 GB Macs. |
 | `JARVIS_WHISPER_MODEL` | `small` | `medium` or `large-v3` recognize Arabic better but are slower. |
-| `JARVIS_TTS` | `1` | Speak replies with macOS `say` (uses the Arabic voice *Majed* when installed). |
+| `JARVIS_TTS` | `1` | Speak replies out loud. Choose the voice in the web panel. |
+| `JARVIS_HOTKEY` | `right_option` | Hold this key anywhere to talk. `off` disables it. |
 | `JARVIS_PORT` | `8765` | Port for the local UI. |
 
 For a better Arabic voice, open System Settings → Accessibility → Spoken Content → System Voice → Manage Voices and download an Arabic voice.
@@ -94,6 +131,9 @@ For a better Arabic voice, open System Settings → Accessibility → Spoken Con
 | Keyboard shortcuts, Shortcuts app | `press_keys`, `run_shortcut` | System Events, `shortcuts run` |
 | Learn your own commands | `learn_shortcut`, `forget_shortcut` | Saved in `~/.jarvis/shortcuts.json` |
 | Open websites, search the web | `open_url`, `web_search` | Default browser |
+| Play anything from YouTube, or a mix | `play_youtube` | Top search result in Chrome (reuses the open YouTube tab) |
+| Latest video from a channel | `play_latest_from_channel` | The channel's public RSS feed |
+| Remember things about you | `remember`, `forget` | `~/.jarvis/profile.json` |
 
 ### Safety
 

@@ -138,6 +138,13 @@
   .sc div { border-left: 2px solid var(--line-strong); padding-left: 8px; unicode-bidi: plaintext; }
   .sc b { color: var(--accent-2); font-weight: 600; }
 
+  .voice-pick { align-items: center; }
+  .voice-pick select {
+    background: rgba(8, 20, 40, 0.9); color: var(--text); border: 1px solid var(--line-strong);
+    border-radius: 3px; font: 11px var(--mono); padding: 3px 6px; max-width: 170px; cursor: pointer;
+  }
+  .voice-pick select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
   .linkbtn { background: none; border: 0; color: var(--muted); cursor: pointer; font: 10px var(--mono); letter-spacing: 0.12em; padding: 0; }
   .linkbtn:hover { color: var(--accent); }
 
@@ -194,7 +201,10 @@
       <div class="meter"><span>BATTERY</span><div class="track"><div class="fill" id="bat"></div></div><b id="batV">–</b></div>
       <div class="kv"><span>BRAIN</span><b id="brain">–</b></div>
       <div class="kv"><span>MODEL</span><b id="model">–</b></div>
-      <div class="kv"><span>VOICE</span><b id="voice">–</b></div>
+      <div class="kv"><span>HOTKEY</span><b id="hotkey">–</b></div>
+      <label class="kv voice-pick"><span>VOICE</span>
+        <select id="voiceSel" aria-label="Jarvis voice"></select>
+      </label>
     </div>
     <div class="panel">
       <h2>Activity <button class="linkbtn" id="reset" type="button">NEW CHAT</button></h2>
@@ -247,6 +257,7 @@
   }
 
   let busy = false;
+  let lastTurnId = -1; // -1 = not synced yet; skip turns that happened before the page opened
   let mode = "idle"; // idle | listening | thinking | reply
   function setState(text, m = mode, isErr = false) {
     mode = m;
@@ -287,6 +298,7 @@
     setState("THINKING…", "thinking");
     try {
       const r = await promise;
+      if (r.id) lastTurnId = Math.max(lastTurnId, r.id);
       if (r.transcript || typed) addMsg(r.transcript || typed, "you");
       addSteps(r.actions);
       addMsg(r.reply, "bot");
@@ -335,8 +347,24 @@
       meter("cpu", s.cpu); meter("mem", s.memory); meter("bat", s.battery);
       $("brain").textContent = s.brain + (s.brain === "Ollama" ? " · free, local" : "");
       $("model").textContent = s.model;
-      $("voice").textContent = s.tts ? "macOS say" : "browser";
       serverSpeaks = !!s.tts;
+      $("hotkey").textContent = s.hotkey ? "HOLD " + s.hotkey.replace("_", " ").toUpperCase() : "OFF";
+      const sel = $("voiceSel");
+      if (!sel.options.length && s.voices) {
+        for (const [k, label] of Object.entries(s.voices)) sel.add(new Option(label, k));
+      }
+      if (document.activeElement !== sel) sel.value = s.voice || "";
+      // turns made with the push-to-talk key, outside this page
+      const turns = s.turns || [];
+      if (lastTurnId < 0) lastTurnId = turns.length ? turns[turns.length - 1].id : 0;
+      for (const t of turns) {
+        if (t.id <= lastTurnId) continue;
+        lastTurnId = t.id;
+        if (t.source === "hud") continue;
+        addMsg(t.transcript, "you"); addSteps(t.actions); addMsg(t.reply, "bot");
+      }
+      if (s.listening && mode === "idle") setState("LISTENING… (HOTKEY)", "listening");
+      else if (!s.listening && mode === "listening" && !recorder) setState("READY", "idle");
       const box = $("shortcuts");
       const entries = Object.entries(s.shortcuts || {});
       if (entries.length) {
@@ -354,8 +382,15 @@
       setState("JARVIS SERVER IS OFFLINE", "idle", true);
     }
   }
+  $("voiceSel").addEventListener("change", async (e) => {
+    try {
+      await api("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ voice: e.target.value }) });
+      send(e.target.value === "dark" ? "قول جملة قصيرة غامضة تعرّف بيها نفسك" : "عرّف نفسك في جملة قصيرة");
+    } catch (err) { setState("ERROR: " + err.message, "idle", true); }
+  });
+
   refreshStatus();
-  setInterval(refreshStatus, 4000);
+  setInterval(refreshStatus, 1500);
 
   // ------------------------------------------------------------------ microphone
   let stream = null, recorder = null, chunks = [], analyser = null, level = 0;

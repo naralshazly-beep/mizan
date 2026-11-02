@@ -1,5 +1,7 @@
 # Speech-to-text (runs locally, free)
 faster-whisper>=1.1
+# Natural voices (Egyptian, Libyan, dark preset) from Microsoft's free online TTS
+edge-tts>=7.0
 # HUD system stats
 psutil>=5.9
 # Claude backend (optional; only used when ANTHROPIC_API_KEY is set)
@@ -7,3 +9,6 @@ anthropic>=2.3
 # macOS screen reading (on-device OCR via Apple's Vision framework)
 pyobjc-framework-Vision>=10.0 ; sys_platform == "darwin"
 pyobjc-framework-Quartz>=10.0 ; sys_platform == "darwin"
+# Push-to-talk from anywhere (no browser): microphone capture
+sounddevice>=0.5 ; sys_platform == "darwin"
+numpy>=1.26

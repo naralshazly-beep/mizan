@@ -38,6 +38,7 @@ class Config:
     ollama_keep_alive: str
     whisper_model: str
     tts: bool
+    hotkey: str
     port: int
 
     @property
@@ -63,5 +64,6 @@ def load_config() -> Config:
         ollama_keep_alive=env("JARVIS_OLLAMA_KEEP_ALIVE", "5m"),
         whisper_model=env("JARVIS_WHISPER_MODEL", "small"),
         tts=env("JARVIS_TTS", "1") not in ("0", "false", "no", ""),
+        hotkey=env("JARVIS_HOTKEY", "right_option").lower(),
         port=int(env("JARVIS_PORT", "8765")),
     )
