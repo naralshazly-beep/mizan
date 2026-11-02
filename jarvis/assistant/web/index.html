@@ -212,7 +212,7 @@
     </div>
     <div class="panel">
       <h2>My shortcuts</h2>
-      <div class="sc" id="shortcuts"><div class="empty" style="border:0;padding:0">Teach me one: “when I say work mode, open Slack and VS Code side by side”.</div></div>
+      <div class="sc" id="shortcuts"><div class="empty" style="border:0;padding:0" dir="auto">علّمني أمر: «لما أقول وضع الأكل شغّل آخر فيديو من فيلم في الخمسينة».</div></div>
     </div>
   </section>
 </main>
@@ -225,13 +225,16 @@
 
   // ------------------------------------------------------------------ commands
   const COMMANDS = [
-    ["▣", "OPEN APPS", "افتح سفاري", "Open Safari"],
-    ["◫", "MOVE WINDOWS", "Put Safari on the left and Notes on the right", null],
-    ["▤", "FIND FILES", "دوّر على ملف الفاتورة وافتحه", null],
-    ["◉", "READ THE SCREEN", "What's on my screen?", null],
-    ["♫", "PLAY MUSIC", "شغّل عمرو دياب", null],
-    ["✉", "REPLY TO EMAIL", "Read my unread emails and draft a reply to the latest", null],
-    ["⚡", "LEARN SHORTCUTS", "When I say work mode, open Slack and VS Code side by side", null],
+    ["♫", "PLAY MUSIC", "شغّلي ميكس ويجز على يوتيوب"],
+    ["♪", "SOMETHING I LIKE", "شغّلي حاجة من اللي بحبها"],
+    ["▶", "LATEST VIDEO", "شغّل آخر فيديو من فيلم في الخمسينة"],
+    ["☾", "QURAN", "شغّل قرآن"],
+    ["▣", "OPEN APPS", "افتح سفاري"],
+    ["◫", "MOVE WINDOWS", "حط سفاري على الشمال والنوتس على اليمين"],
+    ["▤", "FIND FILES", "دوّر على آخر PDF نزّلته وافتحه"],
+    ["◉", "READ THE SCREEN", "إيه اللي على الشاشة؟"],
+    ["✉", "REPLY TO EMAIL", "اقرالي الإيميلات الجديدة واكتب رد على آخر واحد"],
+    ["⚡", "LEARN SHORTCUTS", "لما أقول وضع الأكل شغّل آخر فيديو من فيلم في الخمسينة"],
   ];
   const cmds = $("cmds");
   for (const [ico, label, example] of COMMANDS) {
