@@ -1,7 +1,7 @@
 import { generateDailyTrends } from "@/lib/trends/generate";
 
-// Research with web search takes a few minutes.
-export const maxDuration = 800;
+// Research with web search takes a few minutes; 300s is the Hobby-plan max.
+export const maxDuration = 300;
 
 /**
  * Called once a day by Vercel Cron (see vercel.json). Vercel sends

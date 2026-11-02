@@ -7,7 +7,7 @@ import type { TrendItem, TrendReport } from "@/lib/trends/types";
 import { TrendsClient } from "./TrendsClient";
 
 // "Generate now" runs the full research job inside a server action.
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 export default async function TrendsPage({
   searchParams,
