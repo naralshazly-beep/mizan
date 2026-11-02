@@ -26,7 +26,7 @@ const ReportSchema = z.object({
 
 type Report = z.infer<typeof ReportSchema>;
 
-const MAX_CONTINUATIONS = 5;
+const MAX_CONTINUATIONS = 3;
 
 /** Today's date (YYYY-MM-DD) in the report's time zone. */
 export function todayInReportZone(): string {
@@ -66,8 +66,8 @@ ${TREND_CATEGORIES.map((c) => `- ${c}`).join("\n")}
         max_tokens: 64000,
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
-        output_config: { effort: "high" },
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 25 }],
+        output_config: { effort: "medium" },
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 15 }],
         messages,
       })
       .finalMessage();
@@ -99,7 +99,7 @@ async function structure(client: Anthropic, date: string, notes: string): Promis
     max_tokens: 32000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(ReportSchema) },
+    output_config: { effort: "low", format: betaZodOutputFormat(ReportSchema) },
     messages: [
       {
         role: "user",

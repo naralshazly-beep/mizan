@@ -18,6 +18,6 @@ export const TARGET_AUDIENCE =
   "جمهور عربي على إنستجرام وتيك توك وإكس (الخليج ومصر)، مهتم بالتقنية والمال والأعمال والترندات";
 
 /** How many trend items to produce per day. */
-export const ITEMS_PER_DAY = 12;
+export const ITEMS_PER_DAY = 10;
 
 export const TRENDS_MODEL = "claude-opus-5-5";
