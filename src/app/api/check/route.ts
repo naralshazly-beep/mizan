@@ -89,7 +89,8 @@ export async function GET(request: NextRequest) {
         result.reason = "bot check";
         return Response.json(result);
       }
-      const has = body.includes(site.check.text);
+      const needle = site.check.text.replaceAll("{}", username);
+      const has = body.toLowerCase().includes(needle.toLowerCase());
       if (site.check.type === "found") {
         result.status = has ? "found" : "not_found";
       } else {

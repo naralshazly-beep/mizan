@@ -8,6 +8,7 @@
  *      "status"    → HTTP 200 = found, 404/410/3xx = not found
  *      "notFound"  → found unless the body contains `text`
  *      "found"     → found only if the body contains `text`
+ *  ({} inside `text` is replaced with the username, too.)
  *
  * Anything else (403, 429, 5xx, timeouts, captchas) is reported as "unknown"
  * rather than guessed.
@@ -41,6 +42,13 @@ const status: Check = { type: "status" };
 
 export const SITES: Site[] = [
   // ── Social / community ──────────────────────────────────────────────
+  // Candidates under test (big platforms that block most automated checks).
+  { id: "tiktok", name: "TikTok", category: "social", url: "https://www.tiktok.com/@{}", probe: "https://www.tiktok.com/oembed?url=https://www.tiktok.com/@{}", check: status },
+  { id: "tiktok2", name: "TikTok (page)", category: "social", url: "https://www.tiktok.com/@{}", check: { type: "found", text: "\"uniqueId\":\"{}\"" } },
+  { id: "instagram", name: "Instagram", category: "social", url: "https://www.instagram.com/{}/", probe: "https://www.instagram.com/api/v1/users/web_profile_info/?username={}", headers: { "X-IG-App-ID": "936619743392459" }, check: status },
+  { id: "instagram2", name: "Instagram (page)", category: "social", url: "https://www.instagram.com/{}/", check: { type: "found", text: "\"@{}\"" } },
+  { id: "facebook", name: "Facebook", category: "social", url: "https://www.facebook.com/{}", check: status },
+  { id: "facebook2", name: "Facebook (page)", category: "social", url: "https://www.facebook.com/{}", check: { type: "notFound", text: "isn't available" } },
   { id: "reddit", name: "Reddit", category: "social", url: "https://www.reddit.com/user/{}", probe: "https://www.reddit.com/user/{}/about.json", check: status },
   { id: "telegram", name: "Telegram", category: "social", url: "https://t.me/{}", check: { type: "found", text: "tgme_page_title" } },
   { id: "snapchat", name: "Snapchat", category: "social", url: "https://www.snapchat.com/add/{}", check: status },
