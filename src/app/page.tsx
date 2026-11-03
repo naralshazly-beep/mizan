@@ -52,6 +52,16 @@ export default function Home() {
   async function search(e: React.FormEvent) {
     e.preventDefault();
     const name = username.trim().replace(/^@/, "");
+    if (/^\+?[\d\s()-]{7,}$/.test(name)) {
+      setError(
+        "ده شكله رقم تليفون. الأداة بتدور باليوزرنيم بس (زي ahmed_99)، لأن مفيش طريقة عامة تعرف بيها الرقم مربوط بأنهي حسابات.",
+      );
+      return;
+    }
+    if (name.includes("@")) {
+      setError("ده شكله إيميل. اكتب اليوزرنيم بس (الجزء اللي بيظهر في لينك حسابك).");
+      return;
+    }
     if (!USERNAME_RE.test(name)) {
       setError("اليوزرنيم لازم يكون حروف إنجليزي أو أرقام أو . _ - بس (لحد 40 حرف).");
       return;

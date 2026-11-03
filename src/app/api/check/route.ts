@@ -79,7 +79,8 @@ export async function GET(request: NextRequest) {
         const location = res.headers.get("location") ?? "";
         if (GATE_REDIRECT.test(location)) result.reason = "redirected to consent/login page";
         else result.status = "not_found";
-      } else if (res.status === 404 || res.status === 410) result.status = "not_found";
+      } else if (res.status === 404 || res.status === 410 || site.check.missing?.includes(res.status))
+        result.status = "not_found";
       else result.reason = `HTTP ${res.status}`;
     } else if (res.status === 429 || res.status === 403 || res.status >= 500) {
       result.reason = `HTTP ${res.status}`;
