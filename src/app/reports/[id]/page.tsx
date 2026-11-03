@@ -9,6 +9,8 @@ import type { Analysis } from "@/lib/analysis";
 import type { SearchResult } from "@/app/api/search/route";
 import type { Profile } from "@/lib/footprint";
 import AnalysisCard from "@/components/AnalysisCard";
+import Interactions from "@/components/Interactions";
+import WatchPanel from "@/components/WatchPanel";
 
 type Report = {
   id: string;
@@ -20,6 +22,8 @@ type Report = {
   results: Record<string, SearchResult[]>;
   profiles: Profile[];
   analysis: string | null;
+  watch: boolean;
+  last_checked_at: string | null;
 };
 
 function host(link: string) {
@@ -133,7 +137,7 @@ export default function ReportPage() {
               <option key={k} value={k}>{STATUS[k].label}</option>
             ))}
           </select>
-          <button onClick={() => window.print()} className="chip">PDF</button>
+          <Link href={`/reports/${r.id}/print`} className="chip">📄 تقرير PDF</Link>
           <button onClick={remove} className="chip hover:!text-red-400">مسح</button>
         </div>
       </div>
@@ -180,6 +184,9 @@ export default function ReportPage() {
         </div>
 
         <aside className="space-y-4">
+          <Interactions reportId={r.id} />
+          <WatchPanel reportId={r.id} watch={r.watch} lastChecked={r.last_checked_at} />
+
           <section className="card p-4">
             <h2 className="mb-2 font-semibold">📝 ملاحظاتك</h2>
             <textarea

@@ -16,6 +16,9 @@ type Row = {
 };
 
 
+type FollowUp = { id: string; title: string; follow_up_at: string; report_id: string; basma_reports: { person: string; company: string } | null };
+type AlertRow = { id: string; title: string; link: string; source: string | null; published: string | null; report_id: string; basma_reports: { person: string; company: string } | null };
+
 function redFlags(analysis: string | null) {
   if (!analysis) return 0;
   try {
@@ -31,6 +34,9 @@ export default function Dashboard() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | Row["status"]>("all");
   const [loadedAt, setLoadedAt] = useState(0);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [alerts, setAlerts] = useState<AlertRow[]>([]);
 
   useEffect(() => {
     const sb = createClient();
@@ -42,7 +48,34 @@ export default function Dashboard() {
         setLoadedAt(Date.now());
         setRows((data as Row[]) ?? []);
       });
+    sb.from("basma_interactions")
+      .select("id, title, follow_up_at, report_id, basma_reports(person, company)")
+      .not("follow_up_at", "is", null)
+      .eq("follow_up_done", false)
+      .order("follow_up_at")
+      .limit(8)
+      .then(({ data }) => setFollowUps((data as unknown as FollowUp[]) ?? []));
+    sb.from("basma_alerts")
+      .select("id, title, link, source, published, report_id, basma_reports(person, company)")
+      .eq("seen", false)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(({ data }) => setAlerts((data as unknown as AlertRow[]) ?? []));
   }, []);
+
+  function toggle(id: string) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 4 ? prev : [...prev, id]));
+  }
+
+  async function markSeen(id: string) {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+    await createClient().from("basma_alerts").update({ seen: true }).eq("id", id);
+  }
+
+  async function doneFollowUp(id: string) {
+    setFollowUps((prev) => prev.filter((f) => f.id !== id));
+    await createClient().from("basma_interactions").update({ follow_up_done: true }).eq("id", id);
+  }
 
   const shown = useMemo(
     () =>
@@ -97,6 +130,50 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {(followUps.length > 0 || alerts.length > 0) && (
+        <div className="mb-6 grid gap-3 md:grid-cols-2">
+          {followUps.length > 0 && (
+            <section className="card p-4">
+              <h2 className="mb-2 font-semibold">⏰ متابعات جاية</h2>
+              <ul className="space-y-1.5">
+                {followUps.map((f) => {
+                  const late = f.follow_up_at < new Date(loadedAt || 0).toISOString().slice(0, 10);
+                  return (
+                    <li key={f.id} className="flex items-center gap-2 text-sm">
+                      <button onClick={() => doneFollowUp(f.id)} title="خلصت" className="h-4 w-4 shrink-0 rounded border border-border-strong hover:border-found" />
+                      <Link href={`/reports/${f.report_id}`} className="min-w-0 flex-1 truncate hover:underline">
+                        <span className="font-medium">{f.basma_reports?.person || f.basma_reports?.company}</span>
+                        <span className="text-muted"> · {f.title}</span>
+                      </Link>
+                      <span className={`shrink-0 text-xs ${late ? "text-red-400" : "text-unknown"}`}>
+                        {new Date(f.follow_up_at).toLocaleDateString("ar-EG", { day: "numeric", month: "short" })}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          {alerts.length > 0 && (
+            <section className="card border-accent/30 p-4">
+              <h2 className="mb-2 font-semibold">🔔 أخبار جديدة عن عملائك <span className="text-xs text-accent">{alerts.length}</span></h2>
+              <ul className="space-y-2">
+                {alerts.map((a) => (
+                  <li key={a.id} className="flex items-start gap-2 text-sm">
+                    <a href={a.link} target="_blank" rel="noopener noreferrer" onClick={() => markSeen(a.id)} className="min-w-0 flex-1 hover:underline">
+                      <div className="text-xs text-accent">{a.basma_reports?.person || a.basma_reports?.company}</div>
+                      <div className="line-clamp-2">{a.title}</div>
+                      <div className="text-xs text-muted">{[a.source, a.published].filter(Boolean).join(" · ")}</div>
+                    </a>
+                    <button onClick={() => markSeen(a.id)} title="شفته" className="text-xs text-muted hover:text-text">✕</button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="دور على عميل…" className="field max-w-xs flex-1" />
         {(["all", "new", "in_progress", "won", "lost"] as const).map((k) => (
@@ -122,7 +199,16 @@ export default function Dashboard() {
           {shown.map((r) => {
             const flags = redFlags(r.analysis);
             return (
-              <div key={r.id} className="card group flex flex-col p-4 transition hover:border-accent">
+              <div key={r.id} data-active={selected.includes(r.id)} className="card group relative flex flex-col p-4 transition hover:border-accent data-[active=true]:border-accent">
+                <button
+                  onClick={() => toggle(r.id)}
+                  title="اختار للمقارنة"
+                  className={`absolute end-3 top-3 flex h-5 w-5 items-center justify-center rounded border text-xs ${
+                    selected.includes(r.id) ? "border-accent bg-accent text-bg" : "border-border-strong text-transparent opacity-60 group-hover:opacity-100"
+                  }`}
+                >
+                  ✓
+                </button>
                 <Link href={`/reports/${r.id}`} className="flex-1">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/30 to-accent-2/30 text-lg font-bold">
@@ -148,6 +234,18 @@ export default function Dashboard() {
             );
           })}
           {shown.length === 0 && <p className="text-sm text-muted">مفيش نتايج للبحث ده.</p>}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div className="fixed inset-x-0 bottom-4 z-30 mx-auto flex w-fit items-center gap-3 rounded-full border border-accent bg-surface-solid px-4 py-2 shadow-2xl">
+          <span className="text-sm">اخترت {selected.length}</span>
+          {selected.length >= 2 ? (
+            <Link href={`/compare?ids=${selected.join(",")}`} className="btn-primary !px-4 !py-1.5 text-sm">قارن</Link>
+          ) : (
+            <span className="text-xs text-muted">اختار عميل كمان عشان تقارن</span>
+          )}
+          <button onClick={() => setSelected([])} className="text-xs text-muted hover:text-text">إلغاء</button>
         </div>
       )}
     </main>

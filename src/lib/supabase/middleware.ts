@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /api/cron and /api/whatsapp authenticate themselves (cron secret / Meta signature).
+const PUBLIC_PATHS = ["/login", "/auth", "/api/cron", "/api/whatsapp"];
 
 /**
  * Optional allowlist: set BASMA_ALLOWED_EMAILS="a@x.com,b@y.com" in Vercel to
