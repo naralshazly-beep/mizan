@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Hero } from "@/components/Nav";
+import { SITES } from "@/lib/sites";
+import { PERSON_PLATFORMS, extractProfiles, usernameCandidates } from "@/lib/footprint";
 import type { SearchResult } from "../api/search/route";
+import type { CheckResult } from "../api/check/route";
 
 type Section = {
   id: string;
@@ -64,6 +67,14 @@ const SECTIONS: Section[] = [
 type State = { status: "idle" | "loading" | "done" | "error"; results: SearchResult[]; error?: string };
 
 const PW_KEY = "basma-search-password";
+const HISTORY_KEY = "basma-name-history";
+
+type HistoryItem = { p: string; c: string; at: number };
+type Guess = { done: number; total: number; found: { site: string; name: string; url: string }[] };
+
+function favicon(link: string) {
+  return `https://www.google.com/s2/favicons?domain=${host(link)}&sz=32`;
+}
 
 function host(link: string) {
   try {
@@ -82,22 +93,70 @@ export default function NameSearch() {
   const [state, setState] = useState<Record<string, State>>({});
   const [ran, setRan] = useState<{ p: string; c: string } | null>(null);
   const runId = useRef(0);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [guesses, setGuesses] = useState<Record<string, Guess>>({});
+  const [guessing, setGuessing] = useState(false);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(PW_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setPassword(saved);
+      const h = localStorage.getItem(HISTORY_KEY);
+      if (h) setHistory(JSON.parse(h));
     } catch {}
   }, []);
 
-  async function run(e: React.FormEvent) {
+  const profiles = useMemo(
+    () => extractProfiles(Object.values(state).flatMap((s) => s.results.map((r) => r.link))),
+    [state],
+  );
+
+  function remember(p: string, c: string) {
+    const next = [{ p, c, at: Date.now() }, ...history.filter((h) => h.p !== p || h.c !== c)].slice(0, 8);
+    setHistory(next);
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    } catch {}
+  }
+
+  async function guessUsernames() {
+    const cands = usernameCandidates(ran?.p ?? "");
+    if (!cands.length) return;
+    const sites = SITES.filter((s) => PERSON_PLATFORMS.includes(s.id));
+    setGuessing(true);
+    setGuesses(Object.fromEntries(cands.map((u) => [u, { done: 0, total: sites.length, found: [] }])));
+    const jobs = cands.flatMap((u) => sites.map((site) => ({ u, site })));
+    const worker = async () => {
+      while (jobs.length) {
+        const { u, site } = jobs.shift()!;
+        let r: CheckResult | null = null;
+        try {
+          r = await (await fetch(`/api/check?site=${site.id}&username=${encodeURIComponent(u)}`)).json();
+        } catch {}
+        setGuesses((prev) => {
+          const g = prev[u];
+          if (!g) return prev;
+          const found = r?.status === "found" ? [...g.found, { site: site.id, name: site.name, url: r.url }] : g.found;
+          return { ...prev, [u]: { ...g, done: g.done + 1, found } };
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
+    setGuessing(false);
+  }
+
+  function submit(e: React.FormEvent) {
     e.preventDefault();
-    const p = person.trim();
-    const c = company.trim();
+    run(person.trim(), company.trim());
+  }
+
+  async function run(p: string, c: string) {
     if (!p && !c) return;
     const id = ++runId.current;
     setRan({ p, c });
+    setGuesses({});
+    remember(p, c);
     setNotConfigured(false);
     try {
       if (password) localStorage.setItem(PW_KEY, password);
@@ -144,7 +203,7 @@ export default function NameSearch() {
         subtitle="اكتب اسم العميل وشركته، وبصمة تجمعلك اللي منشور عنهم: لينكدإن، السوشيال، السجل التجاري، الأخبار، والسمعة، كله في صفحة واحدة."
       />
 
-      <form onSubmit={run} className="card mx-auto max-w-3xl p-4 sm:p-5">
+      <form onSubmit={submit} className="no-print card mx-auto max-w-3xl p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <input
             value={person}
@@ -178,6 +237,27 @@ export default function NameSearch() {
         </div>
       </form>
 
+      {history.length > 0 && !ran && (
+        <div className="no-print mx-auto mt-5 max-w-3xl">
+          <p className="mb-2 text-xs text-muted">آخر البحوث</p>
+          <div className="flex flex-wrap gap-2">
+            {history.map((h) => (
+              <button
+                key={`${h.p}|${h.c}|${h.at}`}
+                onClick={() => {
+                  setPerson(h.p);
+                  setCompany(h.c);
+                  run(h.p, h.c);
+                }}
+                className="chip"
+              >
+                {[h.p, h.c].filter(Boolean).join(" · ")}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {notConfigured && (
         <div className="card mx-auto mt-6 max-w-3xl border-unknown/40 p-4 text-sm text-unknown">
           خدمة البحث لسه مش متوصلة. لازم يتحط مفتاح <span dir="ltr">SERPER_API_KEY</span> في إعدادات
@@ -187,10 +267,130 @@ export default function NameSearch() {
 
       {ran && (
         <>
-          {!loading && total > 0 && (
-            <p className="mt-8 text-center text-sm text-muted">
-              لقينا <span className="font-bold text-text">{total}</span> نتيجة
-            </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-muted">تقرير عن</div>
+              <div className="truncate text-xl font-bold">{[ran.p, ran.c].filter(Boolean).join(" · ")}</div>
+            </div>
+            {!loading && total > 0 && (
+              <span className="text-sm text-muted">
+                <span className="font-bold text-text">{total}</span> نتيجة ·{" "}
+                <span className="font-bold text-text">{profiles.length}</span> حساب
+              </span>
+            )}
+            <button onClick={() => window.print()} className="no-print chip">
+              تنزيل التقرير PDF
+            </button>
+          </div>
+
+          {(profiles.length > 0 || ran.p) && (
+            <section className="card mt-4 p-4 sm:p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xl">🫆</span>
+                <h2 className="text-lg font-semibold">البصمة الرقمية</h2>
+                <span className="text-xs text-muted">الحسابات اللي ظهرت في نتايج البحث</span>
+              </div>
+
+              {loading && profiles.length === 0 && <p className="loading-dot text-sm text-muted">بيجمع الحسابات…</p>}
+              {!loading && profiles.length === 0 && (
+                <p className="text-sm text-muted">مظهرش حسابات في النتايج. جرب الاسم بطريقة كتابة تانية.</p>
+              )}
+
+              {profiles.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {profiles.map((pr) => (
+                    <div key={pr.platform + pr.handle} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 p-3">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-solid text-sm font-bold text-accent">
+                        {pr.platform[0]}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={favicon(pr.url)}
+                          alt=""
+                          onError={(e) => (e.currentTarget.style.display = "none")}
+                          className="absolute inset-0 h-9 w-9 rounded-lg bg-surface-solid p-2"
+                        />
+                      </div>
+                      <a href={pr.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 hover:underline">
+                        <div className="text-xs text-muted">{pr.platform}</div>
+                        <div className="truncate font-medium" dir="ltr" style={{ textAlign: "right" }}>{pr.handle}</div>
+                      </a>
+                      {/^[A-Za-z0-9._-]{1,40}$/.test(pr.handle) && (
+                        <a
+                          href={`/?u=${encodeURIComponent(pr.handle)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="افحص اليوزرنيم ده على كل المنصات"
+                          className="no-print shrink-0 rounded-lg border border-border-strong px-2 py-1 text-xs text-accent hover:border-accent"
+                        >
+                          افحص ↗
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {usernameCandidates(ran.p).length > 0 && (
+                <div className="mt-5 border-t border-border pt-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">يوزرنيمات محتملة من الاسم</h3>
+                    <span className="text-xs text-muted">
+                      {usernameCandidates(ran.p).length} احتمالات × {PERSON_PLATFORMS.length} منصات
+                    </span>
+                    {Object.keys(guesses).length === 0 && (
+                      <button onClick={guessUsernames} className="no-print chip ms-auto" data-active="true">
+                        افحصهم
+                      </button>
+                    )}
+                  </div>
+                  {Object.keys(guesses).length === 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2" dir="ltr">
+                      {usernameCandidates(ran.p).map((u) => (
+                        <span key={u} className="rounded-md bg-surface-2 px-2 py-1 text-xs text-muted">{u}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {Object.entries(guesses).map(([u, g]) => (
+                        <div key={u} className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-2/60 p-2.5">
+                          <a
+                            href={`/?u=${encodeURIComponent(u)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-36 shrink-0 truncate font-medium text-accent hover:underline"
+                            dir="ltr"
+                            style={{ textAlign: "right" }}
+                          >
+                            @{u}
+                          </a>
+                          {g.found.map((f) => (
+                            <a
+                              key={f.site}
+                              href={f.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full bg-found/15 px-2.5 py-0.5 text-xs font-semibold text-found hover:underline"
+                            >
+                              {f.name}
+                            </a>
+                          ))}
+                          {g.done < g.total ? (
+                            <span className="loading-dot text-xs text-muted">{g.done}/{g.total}</span>
+                          ) : (
+                            g.found.length === 0 && <span className="text-xs text-muted">مفيش</span>
+                          )}
+                        </div>
+                      ))}
+                      {!guessing && (
+                        <p className="text-xs text-muted">
+                          الحساب اللي بنفس اليوزرنيم مش شرط يكون نفس الشخص. افتحه واتأكد من الصورة والبيانات.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
           )}
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {SECTIONS.filter((s) => state[s.id]).map((s) => {

@@ -98,3 +98,11 @@ body {
   50% { opacity: 1; }
 }
 .loading-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+
+@media print {
+  .no-print, nav { display: none !important; }
+  body { background: #fff !important; color: #111 !important; }
+  .card { background: #fff !important; border-color: #ddd !important; backdrop-filter: none !important; break-inside: avoid; }
+  a { color: #0b5cad !important; }
+  .text-muted { color: #555 !important; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Hero } from "@/components/Nav";
 import { CATEGORY_LABELS, SITES, USERNAME_RE, type Site } from "@/lib/sites";
 import type { CheckResult, CheckStatus } from "./api/check/route";
@@ -49,9 +49,13 @@ export default function Home() {
       );
   }, [rows, filter]);
 
-  async function search(e: React.FormEvent) {
+  function search(e: React.FormEvent) {
     e.preventDefault();
-    const name = username.trim().replace(/^@/, "");
+    run(username);
+  }
+
+  async function run(input: string) {
+    const name = input.trim().replace(/^@/, "");
     if (/^\+?[\d\s()-]{7,}$/.test(name)) {
       setError(
         "ده شكله رقم تليفون. الأداة بتدور باليوزرنيم بس (زي ahmed_99)، لأن مفيش طريقة عامة تعرف بيها الرقم مربوط بأنهي حسابات.",
@@ -117,6 +121,16 @@ export default function Home() {
     a.click();
     URL.revokeObjectURL(a.href);
   }
+
+  useEffect(() => {
+    // Allow deep links like /?u=ahmedhassan from the name page.
+    const u = new URLSearchParams(window.location.search).get("u");
+    if (u) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUsername(u);
+      run(u);
+    }
+  }, []);
 
   const found = visible.filter((r) => r.result?.status === "found");
   const rest = visible.filter((r) => r.result?.status !== "found");
