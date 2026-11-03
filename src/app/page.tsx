@@ -126,9 +126,10 @@ export default function Home() {
         <p className="mt-3 text-muted">
           اكتب اليوزرنيم بتاعك وشوف هو ظاهر على أنهي منصات من {SITES.length} منصة.
         </p>
-        <Link href="/image" className="mt-3 inline-block text-sm text-accent hover:underline">
-          البحث بالصورة ←
-        </Link>
+        <div className="mt-3 flex justify-center gap-4 text-sm">
+          <Link href="/name" className="text-accent hover:underline">البحث بالاسم والشركة</Link>
+          <Link href="/image" className="text-accent hover:underline">البحث بالصورة</Link>
+        </div>
       </header>
 
       <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">

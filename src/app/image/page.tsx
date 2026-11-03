@@ -57,9 +57,10 @@ export default function ImageSearch() {
         <p className="mt-3 text-muted">
           اعرف صورتك منشورة فين على الإنترنت، ولو حد بيستخدمها في حساب مش بتاعك.
         </p>
-        <Link href="/" className="mt-3 inline-block text-sm text-accent hover:underline">
-          ← البحث باليوزرنيم
-        </Link>
+        <div className="mt-3 flex justify-center gap-4 text-sm">
+          <Link href="/" className="text-accent hover:underline">البحث باليوزرنيم</Link>
+          <Link href="/name" className="text-accent hover:underline">البحث بالاسم والشركة</Link>
+        </div>
       </header>
 
       <div className="mb-4 flex justify-center gap-2">
