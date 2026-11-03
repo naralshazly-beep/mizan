@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Hero } from "@/components/Nav";
 
 type Engine = { name: string; home: string; byUrl: (u: string) => string; note: string };
 
@@ -50,18 +50,11 @@ export default function ImageSearch() {
   const shown = mode === "url" ? (validUrl ? url.trim() : "") : preview;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 sm:py-16">
-      <header className="mb-8 text-center">
-        <div className="mb-3 text-5xl">🖼️</div>
-        <h1 className="text-3xl font-bold sm:text-4xl">البحث بالصورة</h1>
-        <p className="mt-3 text-muted">
-          اعرف صورتك منشورة فين على الإنترنت، ولو حد بيستخدمها في حساب مش بتاعك.
-        </p>
-        <div className="mt-3 flex justify-center gap-4 text-sm">
-          <Link href="/" className="text-accent hover:underline">البحث باليوزرنيم</Link>
-          <Link href="/name" className="text-accent hover:underline">البحث بالاسم والشركة</Link>
-        </div>
-      </header>
+    <main className="mx-auto max-w-4xl px-4 py-10 sm:py-14">
+      <Hero
+        title="البحث بالصورة"
+        subtitle="اعرف الصورة دي منشورة فين على الإنترنت، في أنهي مواقع وحسابات، ومين نشرها الأول."
+      />
 
       <div className="mb-4 flex justify-center gap-2">
         {(
@@ -73,11 +66,8 @@ export default function ImageSearch() {
           <button
             key={key}
             onClick={() => setMode(key)}
-            className={`rounded-full border px-4 py-1.5 text-sm ${
-              mode === key
-                ? "border-accent bg-accent/10 text-accent"
-                : "border-border text-muted hover:text-text"
-            }`}
+            data-active={mode === key}
+            className="chip"
           >
             {label}
           </button>
@@ -90,10 +80,10 @@ export default function ImageSearch() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com/photo.jpg"
-          className="w-full rounded-xl border border-border bg-surface px-4 py-3 outline-none focus:border-accent"
+          className="field"
         />
       ) : (
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-surface px-4 py-10 text-muted hover:border-accent">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 card border-2 border-dashed border-border-strong px-4 py-12 text-muted transition hover:border-accent">
           <span className="text-3xl">⬆️</span>
           <span>{file ? file.name : "اختار صورة أو اسحبها هنا"}</span>
           <input
@@ -130,7 +120,7 @@ export default function ImageSearch() {
               target="_blank"
               rel="noopener noreferrer"
               aria-disabled={!ready}
-              className={`rounded-xl border border-border bg-surface p-4 ${
+              className={`card p-4 transition ${
                 ready ? "hover:border-accent" : "pointer-events-none opacity-50"
               }`}
             >

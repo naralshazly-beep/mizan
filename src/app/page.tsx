@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Hero } from "@/components/Nav";
 import { CATEGORY_LABELS, SITES, USERNAME_RE, type Site } from "@/lib/sites";
 import type { CheckResult, CheckStatus } from "./api/check/route";
 
@@ -118,159 +118,139 @@ export default function Home() {
     URL.revokeObjectURL(a.href);
   }
 
-  return (
-    <main className="mx-auto max-w-4xl px-4 py-10 sm:py-16">
-      <header className="mb-8 text-center">
-        <div className="mb-3 text-5xl">🫆</div>
-        <h1 className="text-3xl font-bold sm:text-4xl">بصمة</h1>
-        <p className="mt-3 text-muted">
-          اكتب اليوزرنيم بتاعك وشوف هو ظاهر على أنهي منصات من {SITES.length} منصة.
-        </p>
-        <div className="mt-3 flex justify-center gap-4 text-sm">
-          <Link href="/name" className="text-accent hover:underline">البحث بالاسم والشركة</Link>
-          <Link href="/image" className="text-accent hover:underline">البحث بالصورة</Link>
-        </div>
-      </header>
+  const found = visible.filter((r) => r.result?.status === "found");
+  const rest = visible.filter((r) => r.result?.status !== "found");
 
-      <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">
-        <input
-          dir="ltr"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="username"
-          autoComplete="off"
-          spellCheck={false}
-          className="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-lg outline-none focus:border-accent"
-        />
+  return (
+    <main className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
+      <Hero
+        title="ابحث باليوزرنيم"
+        subtitle={`اكتب يوزرنيم وبصمة تفحصه على ${SITES.length} منصة في نفس الوقت: تواصل، برمجة، ألعاب، تصميم، وموسيقى.`}
+      />
+
+      <form onSubmit={search} className="card mx-auto flex max-w-3xl flex-col gap-3 p-3 sm:flex-row">
+        <div className="relative flex-1">
+          <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg text-muted">@</span>
+          <input
+            dir="ltr"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="username"
+            autoComplete="off"
+            spellCheck={false}
+            className="field pl-10 text-lg"
+          />
+        </div>
         {running ? (
-          <button
-            type="button"
-            onClick={stop}
-            className="rounded-xl border border-border bg-surface-2 px-6 py-3 font-semibold"
-          >
+          <button type="button" onClick={stop} className="rounded-[0.9rem] border border-border-strong bg-surface-2 px-6 py-3 font-semibold">
             إيقاف
           </button>
         ) : (
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-6 py-3 font-semibold text-bg hover:opacity-90"
-          >
-            افحص
-          </button>
+          <button type="submit" className="btn-primary">افحص</button>
         )}
       </form>
-      {error && <p className="mt-2 text-sm text-unknown">{error}</p>}
+      {error && <p className="mx-auto mt-3 max-w-3xl text-center text-sm text-unknown">{error}</p>}
 
       {rows.length > 0 && (
-        <section className="mt-8">
-          <div className="mb-2 flex items-center justify-between text-sm text-muted">
-            <span>
-              نتايج <span dir="ltr" className="font-semibold text-text">@{searched}</span>
-            </span>
-            <span>
-              {done} / {rows.length}
-            </span>
-          </div>
-          <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full bg-accent transition-all"
-              style={{ width: `${(done / rows.length) * 100}%` }}
-            />
-          </div>
-
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+        <section className="mt-10">
+          <div className="mb-4 grid grid-cols-3 gap-3">
             {(
               [
-                ["all", `الكل (${rows.length})`],
-                ["found", `موجود (${counts.found})`],
-                ["unknown", `غير مؤكد (${counts.unknown})`],
-                ["not_found", `مش موجود (${counts.not_found})`],
-              ] as [Filter, string][]
-            ).map(([key, label]) => (
+                ["found", "حساب موجود", "text-found", counts.found],
+                ["unknown", "غير مؤكد", "text-unknown", counts.unknown],
+                ["not_found", "مش موجود", "text-missing", counts.not_found],
+              ] as const
+            ).map(([key, label, color, n]) => (
               <button
                 key={key}
-                onClick={() => setFilter(key)}
-                className={`rounded-full border px-4 py-1.5 text-sm ${
-                  filter === key
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border text-muted hover:text-text"
-                }`}
+                onClick={() => setFilter(filter === key ? "all" : key)}
+                data-active={filter === key}
+                className="card p-4 text-start transition data-[active=true]:border-accent"
               >
-                {label}
+                <div className={`text-3xl font-bold ${color}`}>{n}</div>
+                <div className="mt-1 text-sm text-muted">{label}</div>
               </button>
             ))}
+          </div>
+
+          <div className="mb-6 flex items-center gap-3 text-sm text-muted">
+            <span>
+              <span dir="ltr" className="font-semibold text-text">@{searched}</span>
+            </span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full bg-gradient-to-l from-accent to-accent-2 transition-all"
+                style={{ width: `${(done / rows.length) * 100}%` }}
+              />
+            </div>
+            <span>{done} / {rows.length}</span>
             {done > 0 && (
-              <button
-                onClick={exportCsv}
-                className="ms-auto rounded-full border border-border px-4 py-1.5 text-sm text-muted hover:text-text"
-              >
-                تنزيل CSV
-              </button>
+              <button onClick={exportCsv} className="chip">تنزيل CSV</button>
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-2 text-muted">
-                <tr>
-                  <th className="px-4 py-3 text-start font-medium">المنصة</th>
-                  <th className="hidden px-4 py-3 text-start font-medium sm:table-cell">النوع</th>
-                  <th className="px-4 py-3 text-start font-medium">الحالة</th>
-                  <th className="px-4 py-3 text-start font-medium">اللينك</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map(({ site, result }) => (
-                  <tr key={site.id} className="border-t border-border bg-surface">
-                    <td className="px-4 py-3 font-medium" dir="ltr" style={{ textAlign: "right" }}>
-                      {site.name}
-                    </td>
-                    <td className="hidden px-4 py-3 text-muted sm:table-cell">
-                      {CATEGORY_LABELS[site.category]}
-                    </td>
-                    <td className="px-4 py-3">
-                      {result ? (
-                        <span
-                          title={result.reason}
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[result.status]}`}
-                        >
-                          {STATUS_LABEL[result.status]}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted">جاري الفحص…</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {result && result.status !== "not_found" && result.url ? (
-                        <a
-                          href={result.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-accent hover:underline"
-                        >
-                          فتح ↗
-                        </a>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {found.length > 0 && (
+            <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {found.map(({ site, result }) => (
+                <a
+                  key={site.id}
+                  href={result!.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="card group flex items-center gap-3 border-found/30 p-4 transition hover:border-found"
+                >
+                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2 font-bold text-found">
+                    {site.name[0]}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://www.google.com/s2/favicons?domain=${new URL(result!.url).hostname}&sz=64`}
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                      className="absolute inset-0 h-10 w-10 rounded-lg bg-surface-2 p-1.5"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold" dir="ltr" style={{ textAlign: "right" }}>{site.name}</div>
+                    <div className="truncate text-xs text-muted" dir="ltr" style={{ textAlign: "right" }}>
+                      {result!.url.replace(/^https?:\/\/(www\.)?/, "")}
+                    </div>
+                  </div>
+                  <span className="text-found transition group-hover:-translate-x-0.5">↗</span>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {rest.length > 0 && (
+            <div className="card divide-y divide-border overflow-hidden">
+              {rest.map(({ site, result }) => (
+                <div key={site.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                  <span className="flex-1 font-medium" dir="ltr" style={{ textAlign: "right" }}>{site.name}</span>
+                  <span className="hidden text-xs text-muted sm:inline">{CATEGORY_LABELS[site.category]}</span>
+                  {result ? (
+                    <span title={result.reason} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[result.status]}`}>
+                      {STATUS_LABEL[result.status]}
+                    </span>
+                  ) : (
+                    <span className="loading-dot text-xs text-muted">جاري الفحص…</span>
+                  )}
+                  {result?.status === "unknown" && result.url ? (
+                    <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline">
+                      افتح ↗
+                    </a>
+                  ) : (
+                    <span className="w-8" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
-      <footer className="mt-12 space-y-2 text-center text-xs leading-relaxed text-muted">
-        <p>
-          الأداة دي معمولة عشان تفحص بصمتك أنت. بتدور في الصفحات العامة بس، ومش بتسجل دخول ولا
-          بتحفظ أي حاجة.
-        </p>
-        <p>
-          «موجود» معناها إن فيه حساب بنفس الاسم، مش شرط يكون بتاعك. «غير مؤكد» معناها إن الموقع
-          رفض الطلب أو اتأخر في الرد.
-        </p>
+      <footer className="mx-auto mt-12 max-w-2xl space-y-1 text-center text-xs leading-relaxed text-muted">
+        <p>بصمة بتدور في الصفحات العامة بس، ومش بتحفظ أي حاجة.</p>
+        <p>«موجود» معناها إن فيه حساب بنفس الاسم، مش شرط يكون نفس الشخص. «غير مؤكد» معناها إن الموقع رفض الفحص، افتحه بنفسك.</p>
       </footer>
     </main>
   );

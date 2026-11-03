@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0b0f14;
-  --surface: #131a22;
-  --surface-2: #1a232e;
-  --border: #243040;
-  --text: #e6edf3;
-  --text-muted: #8b98a8;
+  --bg: #070a10;
+  --surface: rgba(19, 26, 36, 0.72);
+  --surface-solid: #111821;
+  --surface-2: #18212d;
+  --border: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.28);
+  --text: #e8eef5;
+  --text-muted: #8a97a8;
   --accent: #22d3ee;
+  --accent-2: #818cf8;
   --found: #22c55e;
   --missing: #64748b;
   --unknown: #f59e0b;
@@ -16,11 +19,14 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-muted: var(--text-muted);
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-found: var(--found);
   --color-missing: var(--missing);
   --color-unknown: var(--unknown);
@@ -28,6 +34,67 @@
 }
 
 body {
-  background: var(--bg);
   color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 30rem at 50% -10%, rgba(34, 211, 238, 0.14), transparent 70%),
+    radial-gradient(40rem 25rem at 100% 0%, rgba(129, 140, 248, 0.1), transparent 70%),
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  background-attachment: fixed;
 }
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    backdrop-filter: blur(12px);
+  }
+  .field {
+    width: 100%;
+    background: var(--surface-solid);
+    border: 1px solid var(--border-strong);
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.15);
+  }
+  .btn-primary {
+    border-radius: 0.9rem;
+    padding: 0.85rem 1.6rem;
+    font-weight: 700;
+    color: #04121a;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 30px -8px rgba(34, 211, 238, 0.5);
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; }
+  .chip {
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    padding: 0.35rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip[data-active="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(34, 211, 238, 0.1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.loading-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
