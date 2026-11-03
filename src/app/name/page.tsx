@@ -66,6 +66,30 @@ const SECTIONS: Section[] = [
     google: (p, c) =>
       p || c ? g(`${both(p, c)} (scam OR fraud OR lawsuit OR complaint OR نصب OR احتيال OR قضية OR شكوى)`) : null,
   },
+  {
+    id: "roles", title: "الشركات والمناصب", icon: "🏛️", type: "web",
+    query: (p) => (p ? `${quoted(p)} (founder OR owner OR "managing director" OR CEO OR chairman OR partner OR director OR مؤسس OR مالك OR "رئيس مجلس" OR شريك OR "المدير العام")` : null),
+    google: (p) => (p ? g(`${quoted(p)} (founder OR owner OR "managing director" OR CEO OR chairman OR partner OR director OR مؤسس OR مالك OR "رئيس مجلس" OR شريك)`) : null),
+  },
+  {
+    id: "officers", title: "سجلات الشركات", icon: "🗄️", type: "web",
+    query: (p) => (p ? `${quoted(p)} (site:opencorporates.com OR site:zawya.com OR site:crunchbase.com OR site:dnb.com OR site:bloomberg.com/profile)` : null),
+    google: (p) => (p ? g(`${quoted(p)} (site:opencorporates.com OR site:zawya.com OR site:crunchbase.com OR site:dnb.com)`) : null),
+  },
+  {
+    id: "shareholding", title: "إفصاحات المساهمين", icon: "📈", type: "web",
+    query: (p, c) =>
+      p ? `${quoted(p)} ${c ? quoted(c) : ""} (shareholder OR "major shareholders" OR stake OR مساهم OR حصة OR "كبار المساهمين")` : null,
+    google: (p, c) =>
+      p ? g(`${quoted(p)} ${c ? quoted(c) : ""} (shareholder OR "major shareholders" OR stake OR مساهم OR حصة)`) : null,
+  },
+  {
+    id: "company_size", title: "حجم الشركة ونشاطها", icon: "📊", type: "web",
+    query: (_, c) =>
+      c ? `${quoted(c)} (revenue OR employees OR projects OR funding OR valuation OR إيرادات OR موظفين OR مشاريع OR تمويل)` : null,
+    google: (_, c) =>
+      c ? g(`${quoted(c)} (revenue OR employees OR projects OR funding OR إيرادات OR موظفين OR مشاريع)`) : null,
+  },
 ];
 
 type State = { status: "idle" | "loading" | "done" | "error"; results: SearchResult[]; error?: string };
@@ -264,7 +288,7 @@ export default function NameSearch() {
     <main className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
       <Hero
         title="البحث بالاسم والشركة"
-        subtitle="اكتب اسم العميل وشركته، وبصمة تجمعلك اللي منشور عنهم: لينكدإن، السوشيال، السجل التجاري، الأخبار، والسمعة، كله في صفحة واحدة."
+        subtitle="اكتب اسم العميل وشركته، وبصمة تجمعلك اللي منشور عنهم: لينكدإن، السوشيال، الشركات اللي بيملكها أو بيديرها، السجل التجاري، الأخبار، والسمعة، كله في صفحة واحدة."
       />
 
       <form onSubmit={submit} className="no-print card mx-auto max-w-3xl p-4 sm:p-5">

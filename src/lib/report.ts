@@ -16,4 +16,8 @@ export const SECTION_TITLES: Record<string, { title: string; icon: string }> = {
   registry: { title: "السجل التجاري والتراخيص", icon: "📜" },
   news: { title: "الأخبار", icon: "📰" },
   reputation: { title: "السمعة والشكاوى", icon: "⚠️" },
+  roles: { title: "الشركات والمناصب", icon: "🏛️" },
+  officers: { title: "سجلات الشركات", icon: "🗄️" },
+  shareholding: { title: "إفصاحات المساهمين", icon: "📈" },
+  company_size: { title: "حجم الشركة ونشاطها", icon: "📊" },
 };

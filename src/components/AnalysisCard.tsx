@@ -6,6 +6,12 @@ const LEVEL = {
   green: { dot: "bg-found", text: "text-found", label: "مطمّن" },
 } as const;
 
+const CERT = {
+  confirmed: { label: "مؤكد", cls: "text-found" },
+  likely: { label: "غالبًا", cls: "text-unknown" },
+  unclear: { label: "مش واضح", cls: "text-muted" },
+} as const;
+
 const CONF = { high: "عالية", medium: "متوسطة", low: "ضعيفة" } as const;
 
 export default function AnalysisCard({ a }: { a: Analysis }) {
@@ -34,6 +40,38 @@ export default function AnalysisCard({ a }: { a: Analysis }) {
           <p className="text-sm leading-relaxed">{a.company}</p>
         </div>
       </div>
+
+      {(a.affiliations?.length ?? 0) > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold text-muted">🏛️ الشركات اللي مرتبط بيها</h3>
+          <div className="overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <tbody>
+                {a.affiliations.map((f, i) => (
+                  <tr key={i} className="border-b border-border last:border-0">
+                    <td className="p-2.5 font-medium">{f.company}</td>
+                    <td className="p-2.5 text-muted">{f.role}</td>
+                    <td className="p-2.5 text-xs">
+                      <span className={CERT[f.certainty].cls}>{CERT[f.certainty].label}</span>
+                    </td>
+                    <td className="p-2.5 text-xs">
+                      {/^https?:\/\//.test(f.source) ? (
+                        <a href={f.source} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">المصدر ↗</a>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {a.business_scale && (
+        <div className="mt-3 rounded-xl bg-surface-2/60 p-3">
+          <h3 className="mb-1 text-sm font-semibold text-muted">📊 حجم شغله</h3>
+          <p className="text-sm leading-relaxed">{a.business_scale}</p>
+        </div>
+      )}
 
       {a.signals.length > 0 && (
         <div className="mt-4">
