@@ -6,6 +6,10 @@ import { SITES } from "@/lib/sites";
 import { PERSON_PLATFORMS, extractProfiles, usernameCandidates } from "@/lib/footprint";
 import type { SearchResult } from "../api/search/route";
 import type { CheckResult } from "../api/check/route";
+import type { Analysis } from "@/lib/analysis";
+import AnalysisCard from "@/components/AnalysisCard";
+import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 type Section = {
   id: string;
@@ -96,6 +100,11 @@ export default function NameSearch() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [guesses, setGuesses] = useState<Record<string, Guess>>({});
   const [guessing, setGuessing] = useState(false);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     try {
@@ -146,6 +155,58 @@ export default function NameSearch() {
     setGuessing(false);
   }
 
+  function sectionsPayload() {
+    return SECTIONS.filter((s) => state[s.id]?.results.length).map((s) => ({
+      title: s.title,
+      results: state[s.id].results.map(({ title, link, snippet, date }) => ({ title, link, snippet, date })),
+    }));
+  }
+
+  async function analyze() {
+    if (!ran) return;
+    setAnalyzing(true);
+    setAnalysisError("");
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person: ran.p, company: ran.c, sections: sectionsPayload(), profiles }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAnalysis(data.analysis);
+        if (savedId) {
+          await createClient().from("basma_reports").update({ analysis: JSON.stringify(data.analysis) }).eq("id", savedId);
+        }
+      } else if (data.error === "not_configured" || data.error === "bad_key") {
+        setAnalysisError("الذكاء الاصطناعي لسه مش متوصل. لازم يتحط مفتاح ANTHROPIC_API_KEY في Vercel.");
+      } else if (data.error === "rate_limited") {
+        setAnalysisError("طلبات كتير ورا بعض. استنى دقيقة وجرب تاني.");
+      } else {
+        setAnalysisError("التحليل مكملش. جرب تاني.");
+      }
+    } catch {
+      setAnalysisError("مشكلة في الاتصال. جرب تاني.");
+    }
+    setAnalyzing(false);
+  }
+
+  async function save() {
+    if (!ran) return;
+    setSaving(true);
+    const row = {
+      person: ran.p,
+      company: ran.c,
+      results: Object.fromEntries(SECTIONS.filter((s) => state[s.id]).map((s) => [s.id, state[s.id].results])),
+      profiles,
+      analysis: analysis ? JSON.stringify(analysis) : null,
+    };
+    const { data, error } = await createClient().from("basma_reports").insert(row).select("id").single();
+    setSaving(false);
+    if (!error && data) setSavedId(data.id);
+    else alert("الحفظ مكملش. جرب تاني.");
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     run(person.trim(), company.trim());
@@ -156,6 +217,9 @@ export default function NameSearch() {
     const id = ++runId.current;
     setRan({ p, c });
     setGuesses({});
+    setAnalysis(null);
+    setAnalysisError("");
+    setSavedId(null);
     remember(p, c);
     setNotConfigured(false);
     try {
@@ -279,9 +343,39 @@ export default function NameSearch() {
               </span>
             )}
             <button onClick={() => window.print()} className="no-print chip">
-              تنزيل التقرير PDF
+              تنزيل PDF
             </button>
           </div>
+
+          {!loading && total > 0 && (
+            <div className="no-print mt-4 flex flex-wrap gap-2">
+              <button onClick={analyze} disabled={analyzing} className="btn-primary flex-1 sm:flex-none">
+                {analyzing ? "بيحلل… (ممكن ياخد دقيقة)" : analysis ? "✨ حلل تاني" : "✨ حلل بالذكاء الاصطناعي"}
+              </button>
+              {savedId ? (
+                <Link href={`/reports/${savedId}`} className="card flex items-center gap-2 border-found/40 px-5 py-3 font-semibold text-found">
+                  ✓ اتحفظ · افتح ملف العميل
+                </Link>
+              ) : (
+                <button onClick={save} disabled={saving} className="card px-5 py-3 font-semibold transition hover:border-accent">
+                  {saving ? "بيحفظ…" : "💾 احفظ في العملاء"}
+                </button>
+              )}
+            </div>
+          )}
+          {analysisError && <p className="no-print mt-3 text-sm text-unknown">{analysisError}</p>}
+          {analyzing && (
+            <div className="card mt-4 p-5">
+              <div className="loading-dot h-4 w-1/3 rounded bg-surface-2" />
+              <div className="loading-dot mt-3 h-3 w-full rounded bg-surface-2" />
+              <div className="loading-dot mt-2 h-3 w-5/6 rounded bg-surface-2" />
+            </div>
+          )}
+          {analysis && !analyzing && (
+            <div className="mt-4">
+              <AnalysisCard a={analysis} />
+            </div>
+          )}
 
           {(profiles.length > 0 || ran.p) && (
             <section className="card mt-4 p-4 sm:p-5">

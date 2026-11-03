@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/app/login/actions";
 
 const TABS = [
-  { href: "/", label: "اليوزرنيم" },
+  { href: "/dashboard", label: "العملاء" },
   { href: "/name", label: "الاسم والشركة" },
+  { href: "/", label: "اليوزرنيم" },
   { href: "/image", label: "الصورة" },
 ];
 
@@ -32,21 +34,22 @@ export function Logo({ className = "h-7 w-7" }: { className?: string }) {
 
 export default function Nav() {
   const path = usePathname();
+  if (path.startsWith("/login")) return null;
   return (
     <nav className="sticky top-0 z-20 border-b border-border bg-bg/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 font-bold">
+      <div className="mx-auto flex max-w-5xl items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2 font-bold">
           <Logo />
-          <span className="text-lg">بصمة</span>
+          <span className="hidden text-lg sm:inline">بصمة</span>
         </Link>
-        <div className="ms-auto flex gap-1 rounded-full border border-border bg-surface-solid/60 p-1 text-sm">
+        <div className="ms-auto flex min-w-0 gap-0.5 overflow-x-auto rounded-full border border-border bg-surface-solid/60 p-1 text-xs sm:text-sm">
           {TABS.map((t) => {
-            const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+            const active = t.href === "/" ? path === "/" : path.startsWith(t.href) || (t.href === "/dashboard" && path.startsWith("/reports"));
             return (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`rounded-full px-3 py-1.5 transition sm:px-4 ${
+                className={`shrink-0 rounded-full px-2.5 py-1.5 transition sm:px-4 ${
                   active ? "bg-accent/15 text-accent" : "text-muted hover:text-text"
                 }`}
               >
@@ -55,6 +58,13 @@ export default function Nav() {
             );
           })}
         </div>
+        <form action={logout}>
+          <button title="خروج" className="rounded-full border border-border p-2 text-muted hover:text-text">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M5 12h12" />
+            </svg>
+          </button>
+        </form>
       </div>
     </nav>
   );
