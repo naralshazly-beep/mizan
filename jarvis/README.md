@@ -72,9 +72,12 @@ Pick one from the **VOICE** menu in the web panel. Saved in `~/.jarvis/settings.
 | **Dark** (default) | Deep, slow Egyptian voice with a hall echo, and a mysterious persona |
 | Egyptian / Egyptian female | Natural Egyptian Arabic (Microsoft neural voices Shakir / Salma) |
 | Libyan | Libyan Arabic (Omar), and Jarvis writes its replies in Libyan dialect |
+| ElevenLabs · Dark / ElevenLabs · مصري | The most human-sounding voices. Shows up once `ELEVENLABS_API_KEY` is in `.env` |
 | Mac voice | Built-in `say`, works offline |
 
-The neural voices are free through `edge-tts` but need internet, and the reply text is sent to Microsoft's speech service. Without internet Jarvis falls back to the Mac voice.
+**ElevenLabs:** make an account at elevenlabs.io (the free tier is about 10 minutes of speech a month), create an API key under Developers → API Keys, and put it in `.env` as `ELEVENLABS_API_KEY`. For a real Egyptian voice, open the Voice Library, search "Egyptian", add a voice you like, copy its Voice ID, and set `JARVIS_ELEVENLABS_VOICE` (or `JARVIS_ELEVENLABS_DARK_VOICE`). If ElevenLabs fails (no credits, no internet), Jarvis falls back to the free voice automatically.
+
+The Microsoft voices are free through `edge-tts` but need internet, and the reply text is sent to Microsoft's speech service. Without internet Jarvis falls back to the Mac voice.
 
 ### Talk from anywhere, no browser
 

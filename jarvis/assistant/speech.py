@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import subprocess
 import tempfile
 import threading
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from .mac import IS_MAC
@@ -108,6 +112,26 @@ VOICES: dict[str, dict] = {
         "ar": "ar-LY-OmarNeural", "en": "en-US-GuyNeural", "rate": "+0%", "pitch": "+0Hz",
         "style": "In Arabic speak Libyan dialect (اللهجة الليبية) naturally.",
     },
+    # ElevenLabs: the most human-sounding voices. Needs ELEVENLABS_API_KEY in .env.
+    # Default voice ids are ElevenLabs' built-in voices; put any Voice Library id
+    # (for example an Egyptian voice) in JARVIS_ELEVENLABS_VOICE / _DARK_VOICE.
+    "eleven_dark": {
+        "label": "ElevenLabs · Dark غامض",
+        "engine": "elevenlabs", "voice_env": "JARVIS_ELEVENLABS_DARK_VOICE",
+        "voice_id": "N2lVS1w4EtoT3dr4eOWO",  # "Callum": husky, intense
+        "settings": {"stability": 0.55, "similarity_boost": 0.8, "style": 0.25, "use_speaker_boost": True, "speed": 0.9},
+        "echo": True, "fallback": "dark",
+        "style": "Persona: a calm, deep, slightly ominous AI from a thriller film. Few words, a little "
+                 "mysterious, never silly, always helpful. In Arabic speak Egyptian dialect.",
+    },
+    "eleven": {
+        "label": "ElevenLabs · مصري",
+        "engine": "elevenlabs", "voice_env": "JARVIS_ELEVENLABS_VOICE",
+        "voice_id": "pNInz6obpgDQGcFmaJgB",  # "Adam"; swap for an Egyptian voice from the Voice Library
+        "settings": {"stability": 0.4, "similarity_boost": 0.8, "style": 0.35, "use_speaker_boost": True},
+        "fallback": "egyptian",
+        "style": "In Arabic speak casual Egyptian dialect, like a friend.",
+    },
     "mac": {
         "label": "Mac voice (offline)",
         "style": "In Arabic speak Egyptian dialect.",
@@ -117,6 +141,39 @@ VOICES: dict[str, dict] = {
 
 def voice_style(name: str) -> str:
     return VOICES.get(name, VOICES["dark"])["style"]
+
+
+def has_elevenlabs() -> bool:
+    return bool(os.environ.get("ELEVENLABS_API_KEY"))
+
+
+def available_voices() -> dict[str, str]:
+    """Voices to offer in the HUD (ElevenLabs ones only once a key is set)."""
+    return {k: v["label"] for k, v in VOICES.items() if v.get("engine") != "elevenlabs" or has_elevenlabs()}
+
+
+def elevenlabs_tts(text: str, preset: dict, out: Path) -> Path:
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise RuntimeError("ELEVENLABS_API_KEY isn't set in .env")
+    voice_id = os.environ.get(preset["voice_env"]) or preset["voice_id"]
+    model = os.environ.get("JARVIS_ELEVENLABS_MODEL", "eleven_multilingual_v2")
+    req = urllib.request.Request(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128",
+        data=json.dumps({"text": text, "model_id": model, "voice_settings": preset["settings"]}).encode(),
+        headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            out.write_bytes(resp.read())
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = json.loads(exc.read()).get("detail")
+            message = detail.get("message") if isinstance(detail, dict) else str(detail)
+        except (ValueError, AttributeError):
+            message = exc.reason
+        raise RuntimeError(f"ElevenLabs error {exc.code}: {message}") from exc
+    return out
 
 
 def add_echo(src: Path, dst: Path) -> None:
@@ -200,22 +257,31 @@ class Speaker:
 
     def _speak(self, text: str, generation: int) -> None:
         preset = VOICES[self.voice]
-        if "ar" in preset:
+        # Try the chosen voice, then its fallback (ElevenLabs -> free Microsoft voice), then `say`.
+        chain = [preset]
+        if preset.get("fallback"):
+            chain.append(VOICES[preset["fallback"]])
+        for candidate in chain:
+            if "ar" not in candidate and candidate.get("engine") != "elevenlabs":
+                continue
             try:
-                audio = self._neural(text, preset)
+                audio = self._neural(text, candidate)
                 self._play(["afplay", str(audio)], generation)
                 return
-            except Exception as exc:  # noqa: BLE001 - no internet, edge-tts missing, ...
-                print(f"  (neural voice failed, using the Mac voice: {exc})")
+            except Exception as exc:  # noqa: BLE001 - no internet, quota used up, package missing, ...
+                print(f"  ({candidate['label']} voice failed: {exc})")
         self._play(self._say_cmd(text), generation)
 
     @staticmethod
     def _neural(text: str, preset: dict) -> Path:
-        import edge_tts
-
-        voice = preset["ar"] if is_arabic(text) else preset["en"]
         out = Path(tempfile.gettempdir()) / "jarvis-voice.mp3"
-        edge_tts.Communicate(text, voice, rate=preset["rate"], pitch=preset["pitch"]).save_sync(str(out))
+        if preset.get("engine") == "elevenlabs":
+            elevenlabs_tts(text, preset, out)
+        else:
+            import edge_tts
+
+            voice = preset["ar"] if is_arabic(text) else preset["en"]
+            edge_tts.Communicate(text, voice, rate=preset["rate"], pitch=preset["pitch"]).save_sync(str(out))
         if preset.get("echo"):
             wet = out.with_suffix(".wav")
             add_echo(out, wet)

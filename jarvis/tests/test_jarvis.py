@@ -159,6 +159,71 @@ class VoiceTest(unittest.TestCase):
         self.assertEqual(popen.call_args.args[0], ["say", "-v", "Majed", "أهلا"])
 
 
+class ElevenLabsTest(unittest.TestCase):
+    def setUp(self):
+        os.environ["ELEVENLABS_API_KEY"] = "el-test"
+
+    def tearDown(self):
+        os.environ.pop("ELEVENLABS_API_KEY", None)
+        os.environ.pop("JARVIS_ELEVENLABS_VOICE", None)
+
+    def test_request_shape(self):
+        from assistant import speech
+
+        os.environ["JARVIS_ELEVENLABS_VOICE"] = "egyptianVoice123"
+        resp = mock.MagicMock()
+        resp.__enter__.return_value.read.return_value = b"ID3fake-mp3"
+        out = Path(tempfile.mkdtemp()) / "v.mp3"
+        with mock.patch.object(speech.urllib.request, "urlopen", return_value=resp) as urlopen:
+            speech.elevenlabs_tts("إزيك", speech.VOICES["eleven"], out)
+        req = urlopen.call_args.args[0]
+        self.assertIn("/v1/text-to-speech/egyptianVoice123", req.full_url)
+        self.assertEqual(req.get_header("Xi-api-key"), "el-test")
+        body = json.loads(req.data)
+        self.assertEqual(body["text"], "إزيك")
+        self.assertEqual(body["model_id"], "eleven_multilingual_v2")
+        self.assertEqual(out.read_bytes(), b"ID3fake-mp3")
+
+    def test_error_message_is_readable(self):
+        import io
+
+        from assistant import speech
+
+        err = speech.urllib.error.HTTPError(
+            "u", 401, "Unauthorized", {}, io.BytesIO(b'{"detail":{"status":"quota_exceeded","message":"Out of credits"}}'))
+        with mock.patch.object(speech.urllib.request, "urlopen", side_effect=err):
+            with self.assertRaises(RuntimeError) as ctx:
+                speech.elevenlabs_tts("hi", speech.VOICES["eleven"], Path(tempfile.mkdtemp()) / "v.mp3")
+        self.assertIn("Out of credits", str(ctx.exception))
+
+    def test_falls_back_to_free_voice(self):
+        from assistant import speech
+
+        spk = speech.Speaker(enabled=False, voice="eleven")
+        spk.enabled = True
+        used = []
+
+        def fake_neural(text, preset):
+            used.append(preset["label"])
+            if preset.get("engine") == "elevenlabs":
+                raise RuntimeError("quota")
+            return Path("/tmp/x.mp3")
+
+        with mock.patch.object(speech.Speaker, "_neural", side_effect=fake_neural), \
+                mock.patch.object(speech.subprocess, "Popen") as popen:
+            spk._speak("أهلا", spk._generation)
+        self.assertEqual(used, [speech.VOICES["eleven"]["label"], speech.VOICES["egyptian"]["label"]])
+        self.assertEqual(popen.call_args.args[0][0], "afplay")
+
+    def test_hidden_without_key(self):
+        from assistant import speech
+
+        self.assertIn("eleven", speech.available_voices())
+        os.environ.pop("ELEVENLABS_API_KEY")
+        self.assertNotIn("eleven", speech.available_voices())
+        self.assertIn("dark", speech.available_voices())
+
+
 class DotenvTest(unittest.TestCase):
     def test_later_line_wins(self):
         from assistant import config

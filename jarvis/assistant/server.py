@@ -23,7 +23,7 @@ from .brain import Action, BrainError, make_brain
 from .config import load_config
 from .mac import IS_MAC
 from .settings import get_settings, update_settings
-from .speech import VOICES, Speaker, Transcriber
+from .speech import VOICES, Speaker, Transcriber, available_voices
 
 WEB = Path(__file__).resolve().parent / "web"
 TOKEN = secrets.token_urlsafe(24)
@@ -114,7 +114,7 @@ class Jarvis:
             "mac": IS_MAC,
             "tts": self.voice.enabled,
             "voice": self.voice.voice,
-            "voices": {k: v["label"] for k, v in VOICES.items()},
+            "voices": available_voices(),
             "hotkey": self.config.hotkey if self.hotkey_on else None,
             "listening": self.listening,
             "turns": self.turns[-5:],
